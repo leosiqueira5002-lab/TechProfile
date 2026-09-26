@@ -1,5 +1,5 @@
 import { SiteHeader } from "@/components/site-header";
-import { ResumeBuilder } from "@/features/resume/components/resume-builder";
+import { ResumeBuilderFromContext } from "@/features/resume/components/resume-builder-from-context";
 import "../analise/analysis.css";
 import "@/features/resume/resume-builder.css";
 
@@ -23,7 +23,7 @@ export default function OptimizedResumePage() {
             <span className="analysis-current-status"><i />Rascunho em memória</span>
           </header>
           <p className="curriculum-preparation-note">Este rascunho existe apenas enquanto esta página estiver aberta; ele não será salvo ao sair.</p>
-          <ResumeBuilder />
+          <ResumeBuilderFromContext />
         </div>
       </main>
     </div>

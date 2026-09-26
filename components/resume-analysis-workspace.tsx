@@ -1,13 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ResumeDocumentPanel } from "@/components/resume-document-panel";
 import type { AnalysisResult } from "@/features/analysis/contracts";
 import { PROFESSIONAL_AREAS, type ProfessionalArea } from "@/features/analysis/areas";
 import { getCurriculumCtaCopy } from "@/features/analysis/curriculum-cta";
 import type { AnalysisProviderMode } from "@/features/analysis/providers/types";
 import type { ProcessedResumeDocument, ResumeUploadState } from "@/features/documents/types";
-import Link from "next/link";
+import { mapResumeToDraft } from "@/features/resume/transfer";
+import { useResumeDraftContext } from "@/features/resume/resume-draft-context";
 
 const categoryLabels = [
   ["experience", "Experiência"],
@@ -25,6 +27,8 @@ function statusLabel(status: string) {
 }
 
 export function ResumeAnalysisWorkspace({ mode }: { mode: AnalysisProviderMode }) {
+  const router = useRouter();
+  const { setDraft } = useResumeDraftContext();
   const [document, setDocument] = useState<ProcessedResumeDocument | null>(null);
   const [uploadState, setUploadState] = useState<ResumeUploadState>("idle");
   const [area, setArea] = useState<ProfessionalArea | "">("");
@@ -37,6 +41,7 @@ export function ResumeAnalysisWorkspace({ mode }: { mode: AnalysisProviderMode }
 
   function handleDocumentChange(nextDocument: ProcessedResumeDocument | null) {
     setDocument(nextDocument);
+    setDraft(null);
     setAnalysis(null);
     setError("");
     setConfirmed(false);
@@ -107,12 +112,15 @@ export function ResumeAnalysisWorkspace({ mode }: { mode: AnalysisProviderMode }
 
       {error && <p role="alert" className="analysis-upload-error analysis-api-error">{error}</p>}
 
-      {analysis && <AnalysisResults result={analysis} mode={mode} />}
+      {analysis && document && <AnalysisResults result={analysis} mode={mode} onCreateResume={() => {
+        setDraft(mapResumeToDraft({ extractedText: document.extractedText, role, analysis }));
+        router.push("/curriculo");
+      }} />}
     </>
   );
 }
 
-function AnalysisResults({ result, mode }: { result: AnalysisResult; mode: AnalysisProviderMode }) {
+function AnalysisResults({ result, mode, onCreateResume }: { result: AnalysisResult; mode: AnalysisProviderMode; onCreateResume: () => void }) {
   return <section className="analysis-results" aria-live="polite">
     <div className="analysis-results-heading"><div><p className="analysis-eyebrow">DIAGNÓSTICO DO CURRÍCULO</p><h2>Análise concluída</h2></div><div className="analysis-result-badges"><span className="analysis-demo-badge">{mode === "demo" ? "MODO DEMONSTRAÇÃO" : "ANÁLISE COM IA"}</span><span>SEM PONTUAÇÃO AUTOMÁTICA</span></div></div>
     <div className="analysis-result-summary"><h3>Resumo</h3><p>{result.summary.text}</p><Evidence items={result.summary.evidence} /></div>
@@ -133,7 +141,7 @@ function AnalysisResults({ result, mode }: { result: AnalysisResult; mode: Analy
       <p className="analysis-eyebrow">PRÓXIMA ETAPA</p>
       <h3 id="analysis-next-step-title">Seu currículo pode ir além do diagnóstico.</h3>
       <p>{getCurriculumCtaCopy(result)}</p>
-      <Link className="analysis-next-step-button" href="/curriculo">✨ Criar meu currículo otimizado <span aria-hidden="true">→</span></Link>
+      <button className="analysis-next-step-button" type="button" onClick={onCreateResume}>✨ Criar meu currículo otimizado <span aria-hidden="true">→</span></button>
       <small>Usaremos somente as informações fornecidas por você. Nada será inventado.</small>
     </section>
   </section>;

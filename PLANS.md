@@ -14,6 +14,7 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 - [x] Implementar fluxo de diagnóstico demonstrativo determinístico com contrato comum de provedores e sem chamadas externas (Fase 3 — modo demo).
 - [x] Corrigir detecção demo de formação, projetos, links, idiomas, experiência profissional e resumo sem expor dados de contato.
 - [x] Adicionar CTA pós-diagnóstico e página visual `/curriculo` em preparação, sem transferir ou persistir contexto.
+- [x] Conectar `/analise` ao editor `/curriculo` com rascunho factual compartilhado somente em memória.
 - [ ] Obter aprovação das decisões de produto, privacidade e fornecedores em `docs/DECISIONS.md`.
 - [ ] Preparar autenticação, cotas/rate limit distribuído e política operacional antes de disponibilizar análise a usuários reais.
 
@@ -89,7 +90,7 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 
 **Resultado:** fluxo de upload existente → contexto profissional → confirmação → análise demo estruturada → apresentação temporária está implementado sem OpenAI ou outra chamada externa. Nenhuma funcionalidade de LinkedIn, vaga, pagamento, otimização de currículo ou PDF foi iniciada.
 
-**Ponte para o criador de currículo:** após resultado válido, `/analise` mostra um CTA com texto genérico ou menção apenas a formação/projetos presentes no resultado. O botão navega para `/curriculo`, que é apenas uma página de preparação e informa que nenhum dado da análise foi transferido ou salvo. A rota não depende do diagnóstico e oferece retorno a `/analise`. A transferência do contexto e qualquer retenção em memória/sessão serão decididas e implementadas junto com o gerador de currículo; não usar storage temporário como atalho.
+**Ponte original para o criador:** a primeira versão mostrou CTA e página `/curriculo` sem transferir contexto, conforme o escopo daquela fase. A transferência em memória foi definida e implementada na etapa abaixo; não há persistência temporária ou permanente.
 
 **Validação desta ponte:** testes unitários da copy dinâmica/genérica, junto à suíte completa; confirmar no navegador que o CTA aparece somente depois do diagnóstico, navega à rota estática e não dispara chamadas externas.
 
@@ -282,3 +283,23 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Decision Log:** recomenda-se upload direto autenticado ao Storage; minimização/remoção de identificadores antes da IA; definir retenção por categoria e exclusão completa; manter `gpt-4.1-mini` apenas como candidato até benchmark; validar Chromium na Vercel; definir modelo/preço Stripe antes da implementação de pagamento. Detalhes e links em `docs/DECISIONS.md`.
 
 **Outcomes & Retrospective:** arquitetura em geral coerente para MVP e cobre os fluxos planejados, com as condições documentadas. Não houve mudança de modelo automática, benchmark, teste de arquivos ou prova de deploy. Esta etapa termina com fornecedores e política de dados aguardando aprovação; não iniciar integrações ou receber currículos reais até resolver bloqueadores registrados.
+
+## Integração em memória entre análise e editor — resultado e retrospectiva
+
+**Objetivo:** ao acionar o CTA após uma análise concluída, preparar um `ResumeDraft` somente com informações identificadas e iniciar o editor com esses valores.
+
+**Escopo concluído:** provider React no layout compartilhado `(product)`; mapeador puro em `features/resume/transfer.ts`; CTA monta o rascunho a partir do texto extraído, cargo e evidências da análise e navega para `/curriculo`; o editor recebe `initialValue` quando há contexto e consome o valor uma vez; rota sem contexto inicia vazia. Não há chamadas externas a partir do CTA, armazenamento no browser, banco, IA nova ou PDF.
+
+**Dados transferidos:** cargo desejado; nome, e-mail, telefone, links profissionais e localização apenas quando reconhecidos com rótulos/padrões claros; resumo sob seção explícita; formação, projetos, experiências profissionais com evidência explícita, habilidades/tecnologias, idiomas e certificações apoiados no texto original e nas evidências. Projetos pessoais/acadêmicos não viram experiência; linha isolada de link de repositório não cria projeto; tecnologias não são inferidas; endereço completo não é usado como localização. Datas de somente ano são aceitas nos campos de texto sem completar mês.
+
+**Arquivos principais:** `app/(product)/layout.tsx`, `features/resume/resume-draft-context.tsx`, `features/resume/components/resume-builder-from-context.tsx`, `features/resume/transfer.ts`, `components/resume-analysis-workspace.tsx`, `app/(product)/curriculo/page.tsx`, `features/resume/components/resume-editor.tsx`, `app/(product)/analise/analysis.css`, `tests/resume-transfer.test.mjs` e este plano.
+
+**Validação:** suite completa do Node (`tests/*.test.mjs`), lint, typecheck, build de produção e `git diff --check`; inspeção manual em desktop e mobile do caminho upload → análise demo → CTA → editor; rota `/curriculo` aberta diretamente permaneceu vazia; alteração do nome atualizou a prévia; viewport mobile sem overflow horizontal; inspeção da console do navegador registrada ao concluir a validação.
+
+**Surprises & Discoveries:** currículos podem expressar datas só como ano, mas o editor usava controles `month`, incapazes de exibir esse dado sem inventar mês. Os quatro campos de datas passaram a aceitar texto (`AAAA-MM ou AAAA`) mantendo o layout; a prévia já exibe literalmente o ano. O PDF de teste também confirmou que rótulos/idiomas sem acentos são comuns após extração; o mapeador reconhece formas em português e inglês sem alterar o texto transferido.
+
+**Decision Log:** o provider vive apenas na navegação client-side do segmento `(product)`; o consumidor move os dados para o estado local do `ResumeBuilder` e limpa o contexto, reduzindo a cópia temporária. Dados duvidosos ficam vazios. Nenhuma informação inferida substitui confirmação do usuário.
+
+**Limitações:** o mapeador usa padrões conservadores, não é parser semântico completo e pode deixar de reconhecer layouts, instituições ou idiomas fora dos padrões suportados. Texto extraído e rascunho continuam apenas em memória; recarregar a página perde o contexto e as edições. Sem persistência ou integração com PDF.
+
+**Outcomes & Retrospective:** a navegação e o editor iniciam com os campos comprovados, e as alterações feitas no editor atualizam a prévia em tempo real. Nenhuma fase posterior foi iniciada.

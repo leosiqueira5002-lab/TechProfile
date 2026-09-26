@@ -30,6 +30,7 @@ type TextFieldProps = {
   maxLength: number;
   onChange: (value: string) => void;
   type?: "text" | "email" | "url" | "tel" | "month";
+  placeholder?: string;
   multiline?: boolean;
   disabled?: boolean;
   error?: string;
@@ -42,6 +43,7 @@ function TextField({
   maxLength,
   onChange,
   type = "text",
+  placeholder,
   multiline = false,
   disabled = false,
   error,
@@ -66,6 +68,7 @@ function TextField({
           id={id}
           type={type}
           value={value}
+          placeholder={placeholder}
           maxLength={maxLength}
           disabled={disabled}
           aria-invalid={Boolean(error)}
@@ -154,8 +157,8 @@ export function ResumeEditor({ draft, onChange }: ResumeEditorProps) {
             <div className="resume-field-grid">
               <TextField id={`experience-company-${experience.id}`} label="Empresa" value={experience.company} maxLength={RESUME_FIELD_LIMITS.experiences.company} onChange={(value) => updateExperience(experience.id, { company: value })} />
               <TextField id={`experience-position-${experience.id}`} label="Cargo" value={experience.position} maxLength={RESUME_FIELD_LIMITS.experiences.position} onChange={(value) => updateExperience(experience.id, { position: value })} />
-              <TextField id={`experience-start-${experience.id}`} label="Data inicial" type="month" value={experience.startDate} maxLength={RESUME_FIELD_LIMITS.experiences.startDate} onChange={(value) => updateExperience(experience.id, { startDate: value })} />
-              <TextField id={`experience-end-${experience.id}`} label="Data final" type="month" value={experience.endDate} maxLength={RESUME_FIELD_LIMITS.experiences.endDate} disabled={experience.isCurrent} onChange={(value) => updateExperience(experience.id, { endDate: value })} />
+              <TextField id={`experience-start-${experience.id}`} label="Data inicial" value={experience.startDate} placeholder="AAAA-MM ou AAAA" maxLength={RESUME_FIELD_LIMITS.experiences.startDate} onChange={(value) => updateExperience(experience.id, { startDate: value })} />
+              <TextField id={`experience-end-${experience.id}`} label="Data final" value={experience.endDate} placeholder="AAAA-MM ou AAAA" maxLength={RESUME_FIELD_LIMITS.experiences.endDate} disabled={experience.isCurrent} onChange={(value) => updateExperience(experience.id, { endDate: value })} />
               <label className="resume-checkbox-field">
                 <input type="checkbox" checked={experience.isCurrent} onChange={(event) => updateExperience(experience.id, { isCurrent: event.target.checked, endDate: event.target.checked ? "" : experience.endDate })} />
                 <span>Atualmente</span>
@@ -181,8 +184,8 @@ export function ResumeEditor({ draft, onChange }: ResumeEditorProps) {
             <div className="resume-field-grid">
               <TextField id={`education-institution-${education.id}`} label="Instituição" value={education.institution} maxLength={RESUME_FIELD_LIMITS.education.institution} onChange={(value) => updateEducation(education.id, { institution: value })} />
               <TextField id={`education-course-${education.id}`} label="Curso" value={education.course} maxLength={RESUME_FIELD_LIMITS.education.course} onChange={(value) => updateEducation(education.id, { course: value })} />
-              <TextField id={`education-start-${education.id}`} label="Início" type="month" value={education.startDate} maxLength={RESUME_FIELD_LIMITS.education.startDate} onChange={(value) => updateEducation(education.id, { startDate: value })} />
-              <TextField id={`education-completion-${education.id}`} label="Conclusão prevista/conclusão" type="month" value={education.completionDate} maxLength={RESUME_FIELD_LIMITS.education.completionDate} onChange={(value) => updateEducation(education.id, { completionDate: value })} />
+              <TextField id={`education-start-${education.id}`} label="Início" value={education.startDate} placeholder="AAAA-MM ou AAAA" maxLength={RESUME_FIELD_LIMITS.education.startDate} onChange={(value) => updateEducation(education.id, { startDate: value })} />
+              <TextField id={`education-completion-${education.id}`} label="Conclusão prevista/conclusão" value={education.completionDate} placeholder="AAAA-MM ou AAAA" maxLength={RESUME_FIELD_LIMITS.education.completionDate} onChange={(value) => updateEducation(education.id, { completionDate: value })} />
               <TextField id={`education-status-${education.id}`} label="Status" value={education.status} maxLength={RESUME_FIELD_LIMITS.education.status} onChange={(value) => updateEducation(education.id, { status: value })} />
             </div>
             <button className="resume-remove-button" type="button" onClick={() => onChange({ ...draft, education: removeResumeItem(draft.education, education.id) })}>Remover formação</button>
