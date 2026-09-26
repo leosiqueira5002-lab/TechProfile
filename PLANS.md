@@ -1,0 +1,284 @@
+# Plano de trabalho — TechProfile AI
+
+Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva durante cada fase. O repositório agora contém a fundação Next.js, a landing page e o fluxo de upload/extração da Fase 2. Serviços externos continuam sem configuração; as aprovações listadas em `docs/DECISIONS.md` continuam necessárias antes de produção.
+
+## Progress
+
+- [x] Inspecionar o estado inicial: repositório Git sem commits e sem arquivos de aplicação.
+- [x] Registrar visão, regras de produto, arquitetura inicial e roadmap documental.
+- [x] Selecionar proposta de stack para MVP e registrar alternativas em `docs/ARCHITECTURE.md` e `docs/DECISIONS.md`.
+- [x] Implementar e validar a landing page da Fase 1.
+- [x] Implementar e validar upload e extração local de currículo da Fase 2.
+- [x] Completar estados de documento carregado, substituição e contrato estruturado para preparar a Fase 3.
+- [x] Redesenhar visualmente landing, página `/analise`, cabeçalho, marca e placeholder `/entrar` com identidade clara azul, preservando o fluxo de upload.
+- [x] Implementar fluxo de diagnóstico demonstrativo determinístico com contrato comum de provedores e sem chamadas externas (Fase 3 — modo demo).
+- [x] Corrigir detecção demo de formação, projetos, links, idiomas, experiência profissional e resumo sem expor dados de contato.
+- [x] Adicionar CTA pós-diagnóstico e página visual `/curriculo` em preparação, sem transferir ou persistir contexto.
+- [ ] Obter aprovação das decisões de produto, privacidade e fornecedores em `docs/DECISIONS.md`.
+- [ ] Preparar autenticação, cotas/rate limit distribuído e política operacional antes de disponibilizar análise a usuários reais.
+
+## Fase 0 — Alinhamento e fundação documental
+
+**Objetivo:** estabelecer requisitos, limites e perguntas em aberto antes de escolher tecnologia ou implementar.
+
+**Escopo:** documentação em `AGENTS.md`, `GOALS.md`, `PLANS.md`, `PROMPTS.md`, `README.md` e `docs/`.
+
+**Arquivos relevantes:** todos os documentos acima.
+
+**Dependências:** objetivo do produto fornecido pelo solicitante; confirmação futura das decisões abertas.
+
+**Critérios de aceitação:** documentos coerentes entre si; regra anti-invenção explícita; fases com escopo, critérios e validação; nenhum código ou integração criado nesta fase.
+
+**Validação:** conferir existência e consistência dos arquivos, revisar diff e executar `git diff --check` quando houver alterações versionadas.
+
+**Riscos:** tratar hipóteses como decisões; prometer capacidades ou tratamento de dados ainda não definidos.
+
+## Fase 1 — Landing page e experiência inicial
+
+**Objetivo:** explicar valor, fluxo, limites e privacidade com clareza e permitir iniciar o fluxo de currículo.
+
+**Escopo:** conteúdo e interface da página inicial, estados responsivos e acessíveis, chamada para iniciar. Não inclui análise real, cobrança ou integração externa.
+
+**Arquivos relevantes:** a definir após seleção da stack; provável superfície web e seus componentes de apresentação.
+
+**Dependências:** decisão de stack, identidade visual, idioma inicial e conteúdo de produto.
+
+**Critérios de aceitação:** proposta de valor compreensível; fluxo e limites visíveis; experiência utilizável em telas pequenas e teclado; nenhuma alegação enganosa sobre IA, segurança ou resultados.
+
+**Validação:** revisão de conteúdo, acessibilidade e comportamento visual nos tamanhos de tela suportados, conforme ferramentas escolhidas.
+
+**Riscos:** prometer resultados de contratação; ocultar como documentos são tratados; escopo visual maior que o necessário.
+
+## Fase 2 — Upload e extração de currículo
+
+**Objetivo:** aceitar um currículo PDF/DOCX, validar sua estrutura e mostrar o texto extraído para conferência, sem análise por IA.
+
+**Escopo concluído:** página `/analise` ligada aos CTAs; seleção/arraste de arquivo; estados aguardando, validando, enviando, lendo, carregado e erro; validação de extensão/MIME/tamanho no cliente e validação de MIME, assinatura, estrutura, páginas e tamanho no servidor; extração local no runtime Node; prévia e documento estruturado em memória na tela; substituição de currículo; armazenamento do original no Supabase privado condicionado a sessão autenticada e configuração completa. Sem autenticação e banco configurados, o processamento é temporário.
+
+**Arquivos principais desta entrega:** `app/(product)/analise/page.tsx`, `app/(product)/analise/analysis.css`, `app/api/resumes/route.ts`, `components/resume-uploader.tsx`, `components/resume-document-panel.tsx`, `features/documents/extract.ts`, `features/documents/validation.ts`, `features/documents/types.ts`, `tests/resumes-api.test.mjs` e este plano.
+
+**Dependências:** `pdf-parse` para PDF; `mammoth` para extração de texto DOCX; `yauzl` para inspecionar o ZIP DOCX antes do parser; `@supabase/supabase-js` para a futura operação Storage com JWT do usuário e chave pública sujeita a RLS. Nenhuma chave de serviço é usada. Next externaliza `pdf-parse` e `@napi-rs/canvas` para execução Node, conforme a orientação de integração da biblioteca.
+
+**Limites da implementação:** arquivo até 4 MiB; corpo multipart até 4,5 MiB; PDF até 20 páginas; DOCX até 500 entradas ZIP e 20 MiB expandidos, com razão máxima de expansão 100:1; texto extraído até 200.000 caracteres; extração limitada a 15 segundos. Os documentos de segurança não fixavam números de páginas/expansão; estes valores foram adotados como limites conservadores para esta fase. O teto de arquivo de 4 MiB mantém o corpo abaixo do limite documentado da Vercel Function.
+
+**Critérios de aceitação:** somente PDF/DOCX; validar extensão, MIME declarado, assinatura e estrutura; rejeitar arquivo vazio, corrompido, protegido, acima dos limites ou sem texto; não enviar conteúdo à OpenAI; não registrar o currículo; mostrar erros e prévia acessíveis; exibir nome, tipo, tamanho, número de páginas PDF e status; manter todas as métricas como não analisadas; sem configuração Supabase, indicar que o processamento é temporário.
+
+**Validação executada nesta entrega:** `npm run lint`, `npm run typecheck`, `npm run build` e `node --test tests/resumes-api.test.mjs` (5 testes passando). Testes HTTP cobrem PDF/DOCX válidos, acima de 4 MiB, PDF de 21 páginas, MIME divergente/ausente, formato não permitido, arquivos PDF/DOCX corrompidos, PDF sem texto, PDF com 20 páginas, basename seguro e substituição. Pelo navegador, upload de PDF, troca por DOCX e erro de formato inválido foram confirmados; métricas seguiram em “— / NOT ANALYZED”. Console sem erros. Em viewport de 390 px, `scrollWidth` ficou em 375 px, sem overflow horizontal. Logs locais mostraram somente método, rota, status e duração; não registraram conteúdo extraído.
+
+**Descobertas:** `pdf-parse` v2 gera separadores de página em `result.text` mesmo quando uma página não tem texto. A aplicação agora normaliza `result.pages[].text`, o que evita tratar esses separadores como conteúdo. A biblioteca também precisa ser externalizada no build do Next para o worker/canvas funcionarem no runtime Node.
+
+**Limitações:** Supabase não está configurado e não foi testado contra um projeto real; são necessárias `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_RESUME_BUCKET`, além de Auth, bucket privado e políticas Storage/RLS corretas. A rota exige JWT válido quando o armazenamento está configurado e confirma que o bucket não é público; a tela ainda não encaminha JWT porque login real está fora desta fase. Portanto, aqui o documento estruturado e o texto extraído existem somente na memória da tela e se perdem ao recarregar/sair; o original não persiste sem sessão e configuração. Não há persistência de metadados/texto em banco, OCR, antivírus nem limite de uso por usuário.
+
+**Riscos restantes:** parser PDF/DOCX executa no processo web; limites e timeout reduzem exposição, mas não equivalem a isolamento de processo/limite de memória. A rota de upload ainda precisa de autenticação, rate limit e validação de políticas do bucket antes de processar currículos reais em produção.
+
+**Próximo marco sugerido à época:** Fase 3 — definir área/cargo desejado, contrato do diagnóstico e mensagens factuais. Esse marco foi concluído posteriormente; ver o registro de implementação abaixo.
+
+## Fase 3 — Diagnóstico do currículo
+
+**Objetivo:** apresentar observações úteis sobre clareza, evidências e alinhamento ao cargo escolhido.
+
+**Escopo concluído nesta etapa:** área e cargo obrigatórios; rota `/api/analyses`; interface comum `AnalysisProvider`; provedor demo determinístico selecionado pela aplicação, com análise simples de seções e tecnologias literalmente encontradas; saída validada pelo mesmo schema Zod e pelas regras de evidência; resultado temporário exibido na tela com indicador “Modo demonstração”. Não há score nem chamada externa. Ausências usam linguagem neutra e sugestões condicionais. O adaptador OpenAI permanece separado para uma ativação futura, mas não é importado pelo seletor ativo.
+
+**Arquivos principais:** `app/api/analyses/route.ts`, `features/analysis/contracts.ts`, `features/analysis/provider.ts`, `features/analysis/providers/`, `components/resume-analysis-workspace.tsx`, `components/resume-document-panel.tsx`, `components/resume-uploader.tsx`, `app/(product)/analise/page.tsx`, `app/(product)/analise/analysis.css`, `tests/analysis-demo.test.mjs`, `tests/analysis-contract.test.mjs`, `tests/analyses-api.test.mjs` e este plano.
+
+**Dependências:** `zod` para validação de entrada/saída. O modo demo usa código local determinístico e não precisa de credenciais. O adaptador preparado para OpenAI usa `fetch` nativo, mas não está selecionado nem chamado. A futura ativação dependerá da aprovação de tratamento de dados, configuração segura de `OPENAI_API_KEY` e seleção/validação do modelo.
+
+**Validações da implementação demo:** 12 testes próprios do modo demo, 16 testes de contrato/provedor, 6 testes HTTP da rota de análise e 5 regressões HTTP de upload/extração; `npm run lint`, `npm run typecheck` e `npm run build`. As fixtures são fictícias e cobrem formação/projetos sem títulos exatos, GitHub/LinkedIn sem expor URLs, idiomas com níveis, ausência de experiência/tecnologias/resumo, contatos e schema comum.
+
+**Limitações e riscos restantes:** o provedor demo usa padrões de texto e lista finita de tecnologias, não compreende contexto nem mede qualidade; pode não reconhecer seções com títulos incomuns e nunca comprova que uma competência existe fora do currículo. Resultado temporário se perde ao recarregar. Não existe autenticação nem rate limit distribuído. O adaptador OpenAI não foi chamado e ainda requer decisão de privacidade, minimização validada, modelo aprovado, credencial secreta em ambiente seguro e revisão de retenção antes de ser selecionado.
+
+**Resultado:** fluxo de upload existente → contexto profissional → confirmação → análise demo estruturada → apresentação temporária está implementado sem OpenAI ou outra chamada externa. Nenhuma funcionalidade de LinkedIn, vaga, pagamento, otimização de currículo ou PDF foi iniciada.
+
+**Ponte para o criador de currículo:** após resultado válido, `/analise` mostra um CTA com texto genérico ou menção apenas a formação/projetos presentes no resultado. O botão navega para `/curriculo`, que é apenas uma página de preparação e informa que nenhum dado da análise foi transferido ou salvo. A rota não depende do diagnóstico e oferece retorno a `/analise`. A transferência do contexto e qualquer retenção em memória/sessão serão decididas e implementadas junto com o gerador de currículo; não usar storage temporário como atalho.
+
+**Validação desta ponte:** testes unitários da copy dinâmica/genérica, junto à suíte completa; confirmar no navegador que o CTA aparece somente depois do diagnóstico, navega à rota estática e não dispara chamadas externas.
+
+### Correção da análise demonstrativa — resultado e retrospectiva
+
+**Problema:** o primeiro analisador demo dependia demais de títulos de seção e usava um trecho bruto do texto como resumo. Um currículo válido podia, por isso, ser classificado como sem formação/projetos, e contatos podiam acabar em evidências exibidas.
+
+**Correção:** a extração agora combina títulos com padrões textuais para formação, descrições de projetos, referências a LinkedIn/GitHub, idiomas e sinais explícitos de experiência profissional. O demo conserva trechos de evidência, oculta URLs e remove linhas de contato dos achados. Projetos não contam como emprego. Sem resumo explícito, o resultado informa a ausência e sugere criá-lo depois; nenhuma passagem bruta do currículo é apresentada como resumo. O schema e o fluxo visual não mudaram.
+
+**Validação executada:** `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/*.test.mjs` (39 testes); `npm run lint`; `npm run typecheck`; `npm run build`; `git diff --check`.
+
+**Limitação descoberta:** a detecção continua baseada em padrões e vocabulário finito; pode não reconhecer sinônimos, cursos ou idiomas em linhas muito distantes e não interpreta o contexto semanticamente. Links são apresentados pelo tipo da plataforma, sem repetir o endereço. A regra é conservadora quando não há evidência profissional explícita.
+
+**Próximo marco sugerido:** aprovar tratamento de dados e provedor/modelo; depois selecionar o adaptador OpenAI, configurar `OPENAI_API_KEY` apenas em ambiente protegido, validar minimização e executar avaliações de factualidade antes de usuários reais. Autenticação e cotas/rate limit continuam necessárias antes de piloto.
+
+**Arquivos relevantes:** a definir; contrato de resultado, instruções de IA e apresentação do diagnóstico.
+
+**Dependências:** extração confiável, regras de `docs/AI_RULES.md`, decisão sobre provedor e tratamento de dados.
+
+**Critérios de aceitação:** achados distinguem evidência de sugestão; ausência é formulada como “não encontrado”; afirmações referenciam o material de origem; saída inválida é revisada ou rejeitada.
+
+**Validação:** conjunto de exemplos anonimizados e casos adversariais; revisão de factualidade e clareza; política de qualidade definida antes de lançamento.
+
+**Riscos:** alucinação, viés, recomendações genéricas, falsa confiança e exposição de dados pessoais ao modelo.
+
+## Fase 4 — Paywall
+
+**Objetivo:** definir uma transição transparente entre diagnóstico e recursos pagos, caso o modelo comercial seja confirmado.
+
+**Escopo:** proposta e estados de acesso; cobrança e integração ficam fora até decisão explícita.
+
+**Arquivos relevantes:** a definir após decisões de monetização e arquitetura.
+
+**Dependências:** confirmação do modelo de negócio, preço, direitos do consumidor, região e requisitos legais aplicáveis.
+
+**Critérios de aceitação:** valor, preço, limites, renovação e cancelamento são apresentados com clareza antes de qualquer compra; acesso não é concedido com estado ambíguo.
+
+**Validação:** revisão dos fluxos de acesso e textos; quando houver cobrança autorizada, testes em ambiente de teste do provedor escolhido.
+
+**Riscos:** cobrança inesperada, estado de assinatura divergente, requisitos legais e dependência prematura de fornecedor.
+
+## Fase 5 — Currículo otimizado
+
+**Objetivo:** propor uma redação mais clara e alinhada ao objetivo sem alterar os fatos da pessoa.
+
+**Escopo:** geração revisável e comparação com o conteúdo de origem; mudanças devem ser editáveis e rastreáveis. Sem adicionar fatos novos.
+
+**Arquivos relevantes:** a definir; regras de IA, estrutura do currículo e interface de revisão.
+
+**Dependências:** diagnóstico, regras factuais, formato de saída e decisão de produto sobre edição.
+
+**Critérios de aceitação:** toda afirmação substantiva é apoiada por fonte; itens incertos geram pergunta ou ficam de fora; pessoa revisa antes de exportar.
+
+**Validação:** comparação factual automatizada quando viável e revisão humana de casos; cenários com lacunas e instruções conflitantes.
+
+**Riscos:** embelezamento que muda o sentido, números fabricados e remoção de contexto relevante.
+
+**Preparação entregue antes do gerador:** CTA pós-diagnóstico e página `/curriculo` estática estão implementados para preparar a navegação. A página não recebe nem consulta o resultado da análise. A transferência do contexto e sua retenção/persistência devem ser projetadas e implementadas junto com o gerador nesta fase; nenhum localStorage, cookie, query param ou banco foi introduzido como ponte temporária.
+
+## Fase 6 — Exportação PDF
+
+**Objetivo:** permitir exportar a versão aprovada em documento legível.
+
+**Escopo:** geração de PDF a partir do conteúdo revisado; layout e compatibilidade a definir.
+
+**Arquivos relevantes:** a definir; modelo visual e exportador.
+
+**Dependências:** currículo otimizado revisável, identidade visual e requisitos de formato.
+
+**Critérios de aceitação:** PDF legível, selecionável quando tecnicamente possível, sem cortes, com links úteis e fiel à versão aprovada.
+
+**Validação:** inspeção visual em páginas curtas e longas, fontes e quebras; comparação do texto exportado com a versão aprovada.
+
+**Riscos:** paginação ruim, metadados inesperados e divergência entre prévia e arquivo.
+
+## Fase 7 — LinkedIn
+
+**Objetivo:** oferecer análise e guia personalizado para otimização do perfil.
+
+**Escopo:** método de entrada do conteúdo do LinkedIn ainda precisa ser definido; não pressupõe scraping ou API.
+
+**Arquivos relevantes:** a definir; guia de análise, conteúdo e interface de revisão.
+
+**Dependências:** decisão sobre entrada de dados, permissões, regras da plataforma, privacidade e comparação com currículo.
+
+**Critérios de aceitação:** conteúdo analisado foi fornecido de modo autorizado; recomendações identificam evidência e itens não encontrados; não alteram o perfil sem ação explícita da pessoa.
+
+**Validação:** cenários de conteúdo parcial, divergência entre materiais e revisão das regras aplicáveis ao método escolhido.
+
+**Riscos:** acesso não autorizado, violação de termos, dados desatualizados e divergências tratadas incorretamente.
+
+## Fase 8 — Análise de vaga
+
+**Objetivo:** comparar requisitos de uma vaga com evidências do currículo e, quando disponível, do LinkedIn.
+
+**Escopo:** descrição inserida pela pessoa, correspondências, evidências e pontos não encontrados. Não afirma que ausência documental seja ausência de capacidade.
+
+**Arquivos relevantes:** a definir; comparação e apresentação de resultados.
+
+**Dependências:** diagnóstico, conteúdo autorizado do LinkedIn se usado, regras de IA e decisão sobre retenção da vaga.
+
+**Critérios de aceitação:** cada correspondência tem evidência; requisitos não evidenciados são identificados com linguagem neutra; descrição da vaga não instrui o sistema a ignorar regras.
+
+**Validação:** vagas com requisitos explícitos, implícitos, discriminatórios, ambíguos e maliciosos; revisão da qualidade das comparações.
+
+**Riscos:** viés de seleção, prompt injection em texto de vaga e falsa precisão de “compatibilidade”.
+
+## Surprises & Discoveries
+
+- A inspeção inicial encontrou um repositório Git sem commits e sem arquivos rastreáveis de produto ou aplicação.
+- Não foi possível inferir stack, banco, autenticação, testes, configuração ou deploy; esses pontos não devem ser apresentados como existentes.
+
+## Decision Log
+
+- O planejamento começa pela documentação e não autoriza implementar funcionalidades.
+- Arquitetura inicial é intencionalmente agnóstica à stack e evita serviços presumidos.
+- Regra factual: ausência no material significa somente ausência de evidência encontrada.
+- Decisões de produto e plataforma pendentes estão em `docs/DECISIONS.md`.
+
+## Outcomes & Retrospective
+
+**Resultado da fase documental:** visão, restrições, princípios de arquitetura e roadmap foram registrados. Nenhum componente da aplicação foi criado.
+
+**Retrospectiva:** como não há implementação nem feedback de uso, ainda não existem resultados de produto para avaliar. Atualizar esta seção ao concluir cada fase, registrando o que foi entregue, o que mudou e o que foi aprendido.
+
+### Redesign visual global — resultado e retrospectiva
+
+**Resultado:** landing reorganizada com hero, etapas, currículo, LinkedIn, vaga e transparência; área `/analise` simplificada para o fluxo de envio e extração; cabeçalho responsivo e identidade TechProfile AI em SVG; `/entrar` apresenta formulário apenas visual, sem autenticação. Upload, validação, API e extração foram mantidos sem mudança de comportamento.
+
+**Arquivos principais:** `app/globals.css`, `app/(marketing)/page.tsx`, `app/(product)/analise/page.tsx`, `app/(product)/analise/analysis.css`, `app/(auth)/entrar/page.tsx`, `components/site-header.tsx`, `components/brand.tsx`, `public/brand/techprofile-mark.svg`, `public/brand/techprofile-full.svg` e `docs/DESIGN.md`.
+
+**Discoveries:** a rota de entrada ainda não existia; a nova rota é deliberadamente estática e não submete credenciais. A tela de análise conserva o componente funcional de upload e a prévia da extração, sem introduzir resultados fictícios.
+
+**Validação:** `npm run lint`, `npm run typecheck`, `npm run build` e `git diff --check` executados. `/`, `/analise` e `/entrar` foram abertas e inspecionadas no navegador integrado em viewport desktop e mobile (390 × 844 CSS px). A navegação móvel foi expandida; nenhuma das rotas mostrou overflow horizontal; console sem erros nas três rotas. O servidor de desenvolvimento permanece em `http://localhost:3000/`.
+
+**Limitações:** não há autenticação, análise de LinkedIn ou análise de vaga implementadas. As seções correspondentes na landing são conceituais e identificadas como futuras/demonstrativas.
+
+**Próximo marco:** continuar a sequência de produto definida acima após validar as decisões pendentes em `docs/DECISIONS.md`; este redesign não inicia a análise por IA.
+
+### Fase 2 — resultado e retrospectiva
+
+**Resultado:** upload PDF/DOCX acessível em `/analise`; validação no servidor por extensão, MIME, assinatura e parser; limites para payload, páginas, expansão ZIP, texto e tempo; extração sem IA e prévia do texto. O armazenamento é opcional apenas para sessão Supabase validada e bucket explicitamente privado. No estado atual do repositório, a extração é temporária e não grava o arquivo.
+
+**Decision Log:** usar 4 MiB por arquivo e 20 páginas PDF para manter o endpoint dentro do limite de corpo da Vercel enquanto a autenticação/upload direto ainda não existe; limitar DOCX a 500 entradas e 20 MiB expandidos/100:1; armazenar com a chave pública + JWT do usuário sob RLS, nunca com `service_role`; falhar fechado se o bucket estiver público; nenhum envio à OpenAI nesta fase.
+
+**Outcomes & Retrospective:** lint, typecheck e build passaram. Os casos sintéticos previstos foram aceitos/rejeitados conforme esperado. A inspeção do navegador confirmou título, formatos e CTA. A ferramenta atual não forneceu acesso direto à console JavaScript; por isso, não há alegação de leitura direta da console. O próximo ciclo deve adicionar autenticação e testar Storage/RLS real antes de persistir documentos de usuários.
+
+## Fase 0.5 — Definição técnica
+
+**Objetivo:** escolher uma arquitetura inicial moderna, simples e segura para orientar a implementação do MVP, sem provisionar serviços.
+
+**Escopo:** documentar framework e linguagem, frontend, backend/API, banco, autenticação, armazenamento, extração, IA, PDF, pagamento, hosting, observabilidade, privacidade, variáveis e estrutura de pastas.
+
+**Arquivos relevantes:** `docs/ARCHITECTURE.md`, `docs/DECISIONS.md` e este plano.
+
+**Dependências:** visão de produto e prioridade do MVP já definidas; confirmação do responsável antes de criar contas, inserir chaves ou configurar serviços.
+
+**Critérios de aceitação:** cada decisão relevante tem escolha, razão e alternativa; stack atende o fluxo sem serviços distribuídos prematuros; dados de currículo têm caminho de retenção e exclusão; itens que exigem aprovação estão marcados; nenhum código ou serviço é criado nesta fase.
+
+**Validação:** revisar os documentos e links oficiais usados; `git diff --check`; confirmar que somente os três arquivos autorizados foram alterados.
+
+**Riscos:** limites de execução do hosting para Chromium e documentos; regras de retenção/localização dos provedores; disponibilidade e meios de pagamento no mercado escolhido; custo variável de IA.
+
+**Resultado:** proposta selecionada: Next.js/TypeScript em monólito modular; Supabase para Postgres, Auth e Storage; OpenAI para análise estruturada; Playwright para PDF; Stripe Checkout condicionado à validação regional; Vercel para hosting e Sentry para erros. Nenhum fornecedor foi configurado.
+
+**Surprises & Discoveries:** a documentação oficial consultada confirma suporte do Next.js a App Router, handlers e execução Node; Supabase documenta buckets privados e links assinados; Stripe oferece checkout hospedado; OpenAI oferece saída com schema estruturado. Isso confirma viabilidade conceitual, mas não valida custo, disponibilidade por país, retenção contratual ou limites específicos de produção.
+
+**Decision Log:** decisões e alternativas estão registradas em `docs/DECISIONS.md`; aprovações de fornecedor, mercado, preço, conta e retenção ainda são necessárias.
+
+**Outcomes & Retrospective:** definição técnica documentada sem código, instalação, conta, banco, pagamento, API externa ou deploy. Próxima ação: revisar as aprovações pendentes; depois planejar implementação da landing page na Fase 1 com os nomes de pastas da arquitetura.
+
+## Fase 0.6 — Auditoria técnica
+
+**Objetivo:** revisar a proposta contra o fluxo do produto, riscos operacionais e documentação oficial atual.
+
+**Escopo:** classificar stack, tecnologias, cobertura dos fluxos, integridade factual, exposição à IA, retenção/exclusão, upload e parsing, Stripe, modelo OpenAI, Playwright/Vercel e custo.
+
+**Arquivos relevantes:** `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/DECISIONS.md` e este plano.
+
+**Dependências:** proposta técnica da Fase 0.5 e referências oficiais de fornecedores; não houve código ou protótipo.
+
+**Critérios de aceitação:** cada tópico tem status OK/ATENÇÃO/BLOQUEADOR; problemas têm correção simples; decisões que exigem responsável estão explícitas; não criar código nem configurar fornecedores.
+
+**Validação:** revisão de coerência entre documentos, `git diff --check` e status do Git para confirmar escopo documental.
+
+**Riscos identificados:** limite de 4,5 MB em Vercel Functions se upload for encaminhado pela API; pipeline de arquivo vulnerável sem defesa a arquivos ZIP/PDF hostis; texto pessoal desnecessário e retenção padrão de logs de abuso da API; exclusão Storage incompleta se somente metadados forem removidos; incerteza de Chromium no bundle/serverless; recorrência Stripe pode não estar disponível no Brasil; custos por tokens, renderização e taxas ainda não estimados.
+
+**Surprises & Discoveries:** Vercel documenta corpo máximo de 4,5 MB e limites de bundle/tempo/memória. Supabase exige políticas Storage/RLS e a exclusão de metadata isolada não remove o objeto real. A OpenAI descreve logs de abuso potencialmente retidos até 30 dias por padrão. A Stripe indica o Brasil como país suportado, mas a disponibilidade de um produto específico de subscription pricing tem exceções para o Brasil; modelo avulso versus recorrente precisa ser resolvido.
+
+**Decision Log:** recomenda-se upload direto autenticado ao Storage; minimização/remoção de identificadores antes da IA; definir retenção por categoria e exclusão completa; manter `gpt-4.1-mini` apenas como candidato até benchmark; validar Chromium na Vercel; definir modelo/preço Stripe antes da implementação de pagamento. Detalhes e links em `docs/DECISIONS.md`.
+
+**Outcomes & Retrospective:** arquitetura em geral coerente para MVP e cobre os fluxos planejados, com as condições documentadas. Não houve mudança de modelo automática, benchmark, teste de arquivos ou prova de deploy. Esta etapa termina com fornecedores e política de dados aguardando aprovação; não iniciar integrações ou receber currículos reais até resolver bloqueadores registrados.
