@@ -319,3 +319,23 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Decision Log:** para o MVP, impressão local substitui a proposta anterior de Playwright/Chromium server-side. Gerar/baixar PDF diretamente pelo servidor exigirá nova decisão; nenhum motor PDF foi adicionado.
 
 **Outcomes & Retrospective:** a exportação usa o mesmo HTML aprovado pelo usuário e não introduz persistência, rede ou envio a fornecedor. Nenhuma outra fase foi iniciada.
+
+## Supabase Auth básico — implementação
+
+**Objetivo:** permitir criação e acesso a uma conta TechProfile AI por e-mail/senha e proteger as rotas de produto.
+
+**Escopo concluído:** rotas `/entrar` e `/cadastro`; cadastro/login pelo Supabase Auth; mensagem para confirmação de e-mail; callback PKCE em `/auth/confirm`; sessão SSR baseada em cookies via `@supabase/ssr`; renovação no `proxy.ts`; verificação de claims no servidor; proteção de `/analise` e `/curriculo`; redirecionamento de contas autenticadas para `/analise`; logout no cabeçalho do produto; mensagens de erro amigáveis sem registrar credenciais ou respostas brutas.
+
+**Arquivos principais:** `app/(auth)/layout.tsx`, `app/(auth)/entrar/page.tsx`, `app/(auth)/cadastro/page.tsx`, `app/auth/confirm/route.ts`, `app/(product)/layout.tsx`, `proxy.ts`, `lib/supabase/`, `features/auth/`, `components/auth-form.tsx`, `components/sign-out-button.tsx`, `components/site-header.tsx`, `tests/auth.test.mjs`, `.env.example`, `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/DECISIONS.md` e `AGENTS.md`.
+
+**Dependências:** variáveis locais `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; `@supabase/ssr` adicionado, `@supabase/supabase-js` já existia. Nenhum schema/tabela, Storage, service role ou outra integração foi criado.
+
+**Critérios de aceitação:** entradas inválidas e erros do provedor são apresentados em português sem stack trace; usuário sem sessão não acessa rotas protegidas; sessão válida permanece durante navegação/atualização; logout invalida acesso às rotas de produto; destino de confirmação é local e fixo.
+
+**Validação:** `npm run lint`, `npm run typecheck`, `npm run build`, `git diff --check` e 71 testes independentes passaram. A execução da suite completa obteve 73 aprovações e 3 falhas nos testes de integração de upload: o servidor local usa o Supabase configurado e esses testes não fornecem sessão/token, então a rota exige Storage autenticado e retorna 503. O formulário `/cadastro` foi inspecionado no navegador; `/analise` e `/curriculo` sem sessão redirecionaram para `/entrar`. Não foi criada conta real, então confirmação por e-mail, login de sucesso, persistência de sessão e logout precisam de teste manual com conta controlada pelo responsável.
+
+**Riscos e limites:** conclusão de cadastro depende de confirmação habilitada/configurada no projeto Supabase e entrega de e-mail; conta SMTP padrão possui limites baixos. Não há recuperação de senha, alteração de e-mail, MFA, perfil, exclusão de conta, rate limit próprio ou autorização de dados persistidos. A sessão é mantida pelo cookie SSR do Supabase.
+
+**Configuração manual pendente:** no Supabase Auth, confirmar provedor e-mail/senha, decisão de confirmação de e-mail, Site URL e allowlist de redirect URLs para `http://localhost:3000/auth/confirm` e domínio de produção. Configurar SMTP verificado para entrega confiável antes de uso público. Nenhum serviço foi alterado pela implementação.
+
+**Outcomes & Retrospective:** autenticação básica implementada sem tabela de credenciais, persistência própria, Storage ou mudanças no fluxo do currículo. O Supabase do ambiente está configurado, mas a validação de conta e e-mail não foi executada para evitar criar uma conta ou enviar e-mail sem dados/conta fornecidos pelo responsável. Os três testes de API de upload falharam por exigir uma sessão Storage ausente no fixture de integração; os outros 71 testes passaram. A integração continuará dependendo da configuração de redirect/SMTP do projeto antes de uso público.

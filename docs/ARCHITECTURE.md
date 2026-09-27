@@ -2,7 +2,7 @@
 
 ## Estado
 
-O repositório começou vazio e ainda não contém aplicação nem serviços configurados. Este documento escolhe a stack para a implementação futura do MVP; não significa que qualquer conta, integração ou infraestrutura já esteja criada.
+A aplicação Next.js já implementa landing page, upload/extração temporária, análise demonstrativa, editor em memória e exportação local por impressão. Supabase Auth foi integrado para cadastro/login por e-mail e senha. Banco de currículos, Storage, pagamentos, IA real e deploy continuam fora desta fase.
 
 ## Stack escolhida
 
@@ -12,7 +12,7 @@ O repositório começou vazio e ainda não contém aplicação nem serviços con
 | Frontend | React com Server Components por padrão; componentes client apenas para interações; Tailwind CSS | A interface e a API permanecem no mesmo projeto. Tailwind permite criar uma experiência responsiva sem adotar uma biblioteca visual grande. | SPA separada e kit de componentes amplo criariam mais superfície e dependências sem requisito atual. |
 | Backend/API | Route Handlers do Next.js, validação de entrada/saída com Zod e lógica de domínio em módulos server-only | Atende o fluxo inicial sem serviço separado; mantém credenciais fora do navegador e deixa clara a fronteira servidor/cliente. | NestJS/Fastify seriam razoáveis com API consumida por vários clientes ou equipe maior, mas agora duplicariam estrutura e operação. |
 | Banco | PostgreSQL gerenciado pelo Supabase; SQL/migrations simples, sem ORM inicialmente | Um banco relacional atende usuários, metadados de documentos, análises e estado de acesso; Supabase reúne banco e autenticação. | MongoDB não traz vantagem para os dados relacionais; Prisma adicionaria camada e geração sem necessidade comprovada. Pode ser reconsiderado se consultas e evolução justificarem ORM. |
-| Autenticação | Supabase Auth com magic link por e-mail no MVP; autorização no servidor e políticas RLS para tabelas privadas | Reduz código de senha e reutiliza identidade integrada ao Postgres. Magic link evita armazenar senha na aplicação. | Implementação própria de senha aumenta risco e manutenção; Clerk/Auth0 separariam outro fornecedor enquanto Supabase já está escolhido. Login social fica para depois. |
+| Autenticação | Supabase Auth com e-mail/senha; `@supabase/ssr`, cookies e verificação de claims no servidor/proxy | Usa o projeto Supabase já previsto, mantém sessão em cookies geridos pelo SDK e evita autenticação própria. A aplicação não armazena senhas. | Magic link mudaria o fluxo solicitado; Clerk/Auth0 adicionariam fornecedor; auth própria elevaria risco e manutenção. |
 | Arquivos de currículo | Bucket privado no Supabase Storage; upload direto do cliente com sessão autenticada e políticas RLS por usuário; processamento autorizado no servidor; URLs assinadas curtas somente quando necessárias | Mantém documentos fora do diretório público e evita o limite de 4,5 MB do body das Vercel Functions. | Fazer proxy de cada upload via Route Handler falha para arquivos acima de 4,5 MB; serviço S3 separado adiciona conta e políticas sem necessidade comprovada. |
 | Extração PDF/DOCX | Node.js server runtime; `pdf-parse` para PDF textual e `mammoth` para DOCX; limitar tamanho/páginas e rejeitar formatos não suportados | Bibliotecas focadas mantêm processamento local no servidor e evitam enviar o original a um extrator externo. | OCR/Tesseract e serviços de parsing aumentam custo, superfície e falsos resultados; imagem/scans ficam fora do primeiro escopo e devem ser explicados ao usuário. |
 | IA | OpenAI Responses API, manter `gpt-4.1-mini` como candidato configurável, saída JSON Schema e avaliação offline antes de produção | Custo/qualidade não podem ser inferidos apenas do rótulo mini; a escolha fica provisória até benchmark anonimizado, revisão factual e verificação atual de preço/retention. | Trocar por outro modelo sem comparação cria risco equivalente; modelo local e camada multi-provedor acrescentariam operação sem requisito. |
@@ -43,7 +43,7 @@ O repositório começou vazio e ainda não contém aplicação nem serviços con
 │   ├── resume/          # Edição e exportação do currículo
 │   └── billing/         # Entitlements e integração Stripe
 ├── lib/
-│   ├── auth/            # Sessão e autorização server-side
+│   ├── supabase/        # Clientes browser/server e atualização de sessão no proxy
 │   ├── db/              # Cliente e consultas SQL
 │   ├── storage/         # Operações privadas de arquivos
 │   ├── ai/              # Cliente e schemas de saída
@@ -74,6 +74,11 @@ Como o diagnóstico e o currículo otimizado precisam de revisão e retomada, a 
 
 ## Segurança e limites de operação
 
+- Auth atual: clients browser/server de `@supabase/ssr`; `proxy.ts` atualiza cookies e usa `getClaims()`, enquanto o layout `(product)` exige claims válidos. A chave publishable é pública por definição e nunca substitui autorização/RLS. Nenhuma chave `service_role` é usada.
+- `/analise` e `/curriculo` exigem sessão; `/entrar` e `/cadastro` redirecionam sessões autenticadas para `/analise`. `/auth/confirm` troca o código PKCE e só usa destinos locais fixos.
+- Sessão persistida pelo mecanismo de cookies do Supabase SSR. Não registrar senha, token ou conteúdo privado. Erros do SDK são mapeados para mensagens amigáveis.
+- Variáveis de Auth: `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; nenhum segredo deve usar prefixo `NEXT_PUBLIC_`.
+
 - Aplicação Node runtime para extração e Chromium; endpoints com limites explícitos de arquivo, páginas, tempo, concorrência e payload. Upload direto ao Supabase por causa do limite de request body de 4,5 MB da Vercel Functions.
 - Nunca confiar em MIME/extensão; conferir magic bytes e parser, nomes aleatórios, PDF/DOCX permitidos e rejeitar documentos criptografados/corrompidos. DOCX exige limite de expansão ZIP/entradas; parsers isolados, sem rede/segredos, com timeout e memória limitados.
 - Sem upload público. Autorização por usuário em toda leitura/escrita; RLS como proteção adicional para dados relacionais.
@@ -90,7 +95,7 @@ Como o diagnóstico e o currículo otimizado precisam de revisão e retomada, a 
 |---|---|---|
 | `NEXT_PUBLIC_APP_URL` | URL pública para links e callbacks | Pública; sem segredo |
 | `NEXT_PUBLIC_SUPABASE_URL` | Endpoint Supabase para SDK autorizado | Pública |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Chave pública sujeita a RLS | Pública; não substitui autorização |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Chave pública do SDK Supabase; autorização e RLS continuam obrigatórias | Pública; não é secret key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Operações privilegiadas restritas a servidor, se realmente necessárias | Segredo; evitar uso em rotas comuns |
 | `OPENAI_API_KEY` | Responses API | Segredo |
 | `OPENAI_MODEL` | Modelo selecionado/configurável | Servidor |

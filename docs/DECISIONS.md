@@ -12,7 +12,7 @@ Registre escolhas e questões em aberto. A arquitetura é proposta, não serviç
 | Extração de texto | ATENÇÃO | `pdf-parse` e `mammoth` cobrem documento textual comum; scans, PDFs complexos e DOCX malicioso exigem falhas explícitas, limites e parser isolado. OCR fica fora até avaliação. |
 | Diagnóstico e otimização por IA | OK | API server-side e schema estruturado suportam os fluxos. Schema não prova factualidade; exigir vínculo com evidências e revisão humana. |
 | PDF final para MVP | OK | Impressão nativa do HTML da prévia, apenas no navegador, com folha A4 e CSS de impressão. Não envia dados nem adiciona runtime/dependência. Playwright/Chromium server-side fica fora do MVP e só deve ser reconsiderado com requisito específico aprovado. |
-| Autenticação | OK | Supabase Auth com magic link é suficiente para acesso inicial; adicionar autorização server-side e RLS/grants para cada entidade. |
+| Autenticação | OK | Supabase Auth por e-mail/senha foi implementado com autorização server-side por `getClaims()`. RLS/grants continuam necessários antes de persistir dados de produto. |
 | Armazenamento privado | ATENÇÃO | Bucket privado/RLS é adequado. Não usar service key em operações comuns; exclusão deve chamar API Storage e limpar os dados relacionados, pois excluir metadata isoladamente não remove o objeto. |
 | Retenção e exclusão | ATENÇÃO | “Original após 30 dias” não define texto, resultados, versões, logs, backups nem exclusão imediata. Definir prazos por categoria e procedimento antes de receber documentos reais. |
 | Pagamento Stripe | ATENÇÃO | Stripe lista Brasil entre países suportados e oferece Checkout. Porém produto específico de planos de assinatura pode não estar disponível no Brasil; decidir one-time versus recorrência, meios, moeda, impostos e preço antes de implementar paywall. Não criar checkout/billing até decisão. |
@@ -34,6 +34,7 @@ Registre escolhas e questões em aberto. A arquitetura é proposta, não serviç
 | 2026-09-23 | Retenção | Persistência mínima prevista; prazos por categoria e exclusão completa devem ser aprovados. | Retenção de 30 dias para original era apenas proposta parcial. |
 | 2026-09-23 | Factualidade | Não inventar fatos e tratar lacuna como ausência no material; evidência e revisão humana obrigatórias. | Requisito do produto. |
 | 2026-09-26 | Exportação do currículo | Usar `window.print()` e `@media print`/`@page` A4 para imprimir somente a prévia HTML e permitir “Salvar como PDF”; desabilitar o botão sem conteúdo. | Aprovada para o MVP; local no navegador, sem dependências, chamadas ou persistência. |
+| 2026-09-27 | Autenticação | Supabase Auth com e-mail/senha usando `@supabase/ssr`; cookies de sessão, callback PKCE e verificação server-side por `getClaims()` nas rotas de produto. | Implementada para `/entrar`, `/cadastro`, `/analise` e `/curriculo`; sem tabela de senhas, service role ou perfil persistido. |
 
 ## Aprovações necessárias antes da implementação afetada
 

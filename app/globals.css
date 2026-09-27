@@ -227,3 +227,19 @@ button { font: inherit; }
   .login-card { padding: 27px 22px; }.login-card .brand-logo { width: 195px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+/* Supabase Auth states and authenticated header controls */
+.login-submit:disabled { cursor: not-allowed; opacity: .6; }
+.auth-form { margin: 0; }
+.auth-message { margin: 16px 0 0; border-radius: 7px; padding: 11px 12px; font-size: 13px; line-height: 1.5; }
+.auth-message-error { border: 1px solid #f1caca; background: #fff7f7; color: #9b2525; }
+.auth-message-success { border: 1px solid #b9dfca; background: #f2fbf5; color: #17633a; }
+.auth-switch { margin: 20px 0 0; color: var(--muted); font-size: 13px; text-align: center; }
+.auth-switch a { color: var(--brand-blue); font-weight: 700; text-decoration: none; }
+.sign-out-control { display: inline-flex; align-items: center; gap: 8px; }
+.sign-out-button { border: 0; background: transparent; cursor: pointer; }
+.sign-out-button:disabled { cursor: wait; opacity: .65; }
+.sign-out-error { max-width: 220px; color: #9b2525; font-size: 11px; }
+.mobile-menu .sign-out-control { padding: 8px 10px; }
+.mobile-menu .sign-out-button { padding: 4px 0; text-align: left; }
+.login-submit:not(:disabled) { cursor: pointer; }

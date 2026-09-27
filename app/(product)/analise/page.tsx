@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SiteHeader } from "@/components/site-header";
 import { ResumeAnalysisWorkspace } from "@/components/resume-analysis-workspace";
 import { analysisProvider } from "@/features/analysis/providers";
 import "./analysis.css";
@@ -14,7 +13,6 @@ export default function ResumeAnalysisPage() {
 
   return (
     <div className="analysis-page">
-      <SiteHeader />
       <main className="analysis-main">
         <div className="analysis-content">
           <header className="analysis-page-header">

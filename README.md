@@ -4,7 +4,7 @@ TechProfile AI é um produto planejado para ajudar profissionais de tecnologia a
 
 ## Estado do repositório
 
-Este repositório está em fase de planejamento e contém documentação. A aplicação ainda não foi iniciada; stack, banco de dados, autenticação, integrações, testes e deploy não foram definidos.
+Aplicação Next.js App Router com TypeScript e interface responsiva. O fluxo atual inclui upload/extração temporária de currículo, análise demonstrativa, editor de currículo em memória, exportação por impressão local e autenticação Supabase por e-mail/senha. Não há banco de currículos, pagamento, análise real por IA ou deploy configurado.
 
 ## Documentação
 
@@ -13,16 +13,23 @@ Este repositório está em fase de planejamento e contém documentação. A apli
 - `AGENTS.md`: instruções para contribuições futuras.
 - `PROMPTS.md`: contratos conceituais para tarefas de IA.
 - `docs/PRODUCT.md`: requisitos e limites do produto.
-- `docs/ARCHITECTURE.md`: princípios e arquitetura proposta, sem stack presumida.
+- `docs/ARCHITECTURE.md`: stack escolhida, arquitetura atual e integrações futuras propostas.
 - `docs/AI_RULES.md`: regras de integridade e segurança para IA.
 - `docs/DESIGN.md`: princípios de experiência e linguagem visual.
-- `docs/SECURITY.md`: requisitos de segurança e privacidade a decidir e implementar.
+- `docs/SECURITY.md`: requisitos de segurança e privacidade implementados e pendentes.
 - `docs/DECISIONS.md`: decisões pendentes e registro de decisões tomadas.
 
 ## Princípio central
 
 A IA nunca pode inventar experiência, empresa, tecnologia, projeto, certificação, métrica, resultado, formação ou responsabilidade. Se algo não aparece no material, a conclusão é somente que a informação não foi encontrada.
 
-## Próximo passo
+## Desenvolvimento
 
-Revisar as decisões pendentes em `docs/DECISIONS.md` e atualizar `PLANS.md` antes de iniciar implementação. Nenhuma funcionalidade, integração, cobrança ou infraestrutura está configurada.
+```bash
+npm install
+npm run dev
+```
+
+Configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no `.env.local` para habilitar cadastro, login e acesso às rotas `/analise` e `/curriculo`. O `.env.example` documenta os nomes das variáveis sem credenciais. Para callbacks de confirmação, configure no painel Supabase a Site URL e allowlist local/de produção conforme `docs/SECURITY.md`.
+
+Lint, typecheck e build: `npm run lint`, `npm run typecheck` e `npm run build`. Testes Node: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/*.test.mjs`.

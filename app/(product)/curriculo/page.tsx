@@ -1,4 +1,3 @@
-import { SiteHeader } from "@/components/site-header";
 import { ResumeBuilderFromContext } from "@/features/resume/components/resume-builder-from-context";
 import "../analise/analysis.css";
 import "@/features/resume/resume-builder.css";
@@ -11,7 +10,6 @@ export const metadata = {
 export default function OptimizedResumePage() {
   return (
     <div className="analysis-page">
-      <SiteHeader />
       <main className="analysis-main">
         <div className="analysis-content curriculum-builder-content">
           <header className="analysis-page-header">

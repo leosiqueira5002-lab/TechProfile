@@ -2,7 +2,7 @@
 
 ## Contexto
 
-Este repositório contém a documentação de planejamento do TechProfile AI. A aplicação ainda não foi implementada e a stack não foi escolhida.
+Este repositório contém a aplicação TechProfile AI em Next.js App Router/TypeScript e sua documentação. A stack está registrada em `docs/ARCHITECTURE.md`; o escopo ativo deve ser conferido em `PLANS.md`.
 
 ## Regras de trabalho
 
@@ -18,4 +18,4 @@ Este repositório contém a documentação de planejamento do TechProfile AI. A 
 
 ## Estado atual
 
-O repositório foi confirmado vazio, sem commits nem arquivos de aplicação. Stack, entry points, scripts, dependências, banco, autenticação, testes e deploy são desconhecidos e permanecem decisões futuras.
+Estado conhecido: Next.js App Router com TypeScript, React, Tailwind e ESLint; autenticação Supabase (e-mail/senha) via `@supabase/ssr`; upload e análise demo em fases anteriores; currículo editável em memória e exportação local para PDF/impressão. Não há persistência de currículo, pagamentos ou IA real. Consulte `package.json`, `docs/ARCHITECTURE.md` e `PLANS.md` antes de mudar esses limites.

@@ -19,6 +19,15 @@ O uso da API OpenAI não significa, por si só, ausência de retenção: a docum
 
 ## Autorização, armazenamento e exclusão
 
+### Supabase Auth implementado
+
+- Cadastro e login usam Supabase Auth por e-mail/senha; a aplicação não persiste senhas nem possui tabela própria de credenciais.
+- Clientes usam `@supabase/ssr`: client-side para ações interativas e server-side com cookies para páginas. `proxy.ts` atualiza cookies e chama `getClaims()`; páginas de produto verificam claims no servidor. Não confiar somente em estado de sessão obtido no cliente.
+- A chave publishable pode aparecer no bundle e não concede acesso por si só. Não usar `service_role` no navegador. Toda futura operação de dados exige autorização no servidor e políticas RLS apropriadas.
+- Callback de confirmação aceita código PKCE e redireciona apenas para destinos locais fixos. Configurar no painel Supabase Site URL e allowlist de Redirect URLs por ambiente; não aceitar redirect arbitrário.
+- Não registrar senha, access/refresh token, cookies ou objetos brutos de erro Supabase. A interface apresenta mensagens mapeadas para texto amigável.
+- Logout encerra a sessão pelo SDK e redireciona para `/entrar`; páginas protegidas continuam exigindo claims válidos.
+
 - Bucket deve ser privado; não criar caminho de acesso público. Políticas RLS no Storage devem conferir `auth.uid()` contra o primeiro segmento da chave para INSERT/SELECT/DELETE, e políticas equivalentes precisam restringir tabelas expostas. RLS é camada adicional; verificar também grants e autorização server-side.
 - Chave `service_role` contorna RLS; mantê-la somente no servidor e preferir operação com JWT do usuário quando possível. Se ação administrativa exigir chave privilegiada, validar dono do objeto novamente no servidor.
 - Links assinados são credenciais portadoras: curta validade, finalidade específica, não inserir em logs/telemetria nem expor por longos períodos.
@@ -47,6 +56,8 @@ No MVP, a exportação usa `window.print()` no navegador e CSS de impressão sob
 ## Pendências de produção
 
 Decidir mercado/base legal, aviso de privacidade, contratos e regiões dos operadores, retenção por tipo de dado, direitos de exclusão e contingência de backups. Fazer teste de acesso cruzado entre usuários para Storage, tabelas e resultados. Registrar limites de upload e uso/custo por usuário. O responsável deve aprovar o fluxo de dados para OpenAI e as condições da Vercel/Supabase antes de receber currículos reais.
+
+Para Auth em produção, configurar domínio/Site URL, redirects permitidos por ambiente, SMTP confiável para confirmação, política de senha e proteção contra abuso/tentativas. A implementação atual não cria perfil, banco de currículo ou políticas de Storage.
 
 ## Referências oficiais consultadas
 
