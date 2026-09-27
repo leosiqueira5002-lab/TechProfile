@@ -11,18 +11,20 @@ type StorageInput = {
 };
 
 export async function storeResumePrivately(input: StorageInput): Promise<boolean> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
   const bucket = process.env.SUPABASE_RESUME_BUCKET?.trim();
+  // Auth shares the Supabase project URL/key; Storage is opt-in only when its bucket is configured.
+  if (!bucket) return false;
 
-  if (!url && !anonKey && !bucket) return false;
-  if (!url || !anonKey || !bucket) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+
+  if (!url || !publishableKey) {
     throw new ResumeProcessingError("STORAGE_NOT_CONFIGURED");
   }
   if (!input.accessToken) throw new ResumeProcessingError("STORAGE_AUTH_REQUIRED");
 
   try {
-    const supabase = createClient(url, anonKey, {
+    const supabase = createClient(url, publishableKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       global: { headers: { Authorization: `Bearer ${input.accessToken}` } },
     });

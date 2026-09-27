@@ -98,9 +98,9 @@ async function sendFile(name, type, bytes) {
   return fetch(`${baseUrl}/api/resumes`, { method: "POST", body: form });
 }
 
-test("PDF e DOCX retornam documento estruturado para a próxima etapa", async () => {
+test("PDF e DOCX seguem temporários quando apenas Auth está configurado", async () => {
   const pdfResponse = await sendFile("resume.pdf", "application/pdf", makePdf());
-  assert.equal(pdfResponse.status, 200);
+  assert.equal(pdfResponse.status, 200, (await pdfResponse.clone().json()).error);
   const pdf = await pdfResponse.json();
   assert.equal(pdf.document.status, "processed");
   assert.equal(pdf.document.originalName, "resume.pdf");
@@ -113,10 +113,11 @@ test("PDF e DOCX retornam documento estruturado para a próxima etapa", async ()
   assert.equal(pdf.document.storage.persisted, false);
 
   const docxResponse = await sendFile("resume.docx", DOCX_MIME, makeDocx());
-  assert.equal(docxResponse.status, 200);
+  assert.equal(docxResponse.status, 200, (await docxResponse.clone().json()).error);
   const docx = await docxResponse.json();
   assert.equal(docx.document.pageCount, null);
   assert.match(docx.document.extractedText, /Synthetic DOCX resume experience/);
+  assert.equal(docx.document.storage.persisted, false);
 });
 
 test("rejeita tamanho acima de 4 MiB e PDF com mais de 20 páginas", async () => {
