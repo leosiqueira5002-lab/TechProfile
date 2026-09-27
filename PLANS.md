@@ -300,6 +300,22 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 
 **Decision Log:** o provider vive apenas na navegação client-side do segmento `(product)`; o consumidor move os dados para o estado local do `ResumeBuilder` e limpa o contexto, reduzindo a cópia temporária. Dados duvidosos ficam vazios. Nenhuma informação inferida substitui confirmação do usuário.
 
-**Limitações:** o mapeador usa padrões conservadores, não é parser semântico completo e pode deixar de reconhecer layouts, instituições ou idiomas fora dos padrões suportados. Texto extraído e rascunho continuam apenas em memória; recarregar a página perde o contexto e as edições. Sem persistência ou integração com PDF.
+**Limitações:** o mapeador usa padrões conservadores, não é parser semântico completo e pode deixar de reconhecer layouts, instituições ou idiomas fora dos padrões suportados. Texto extraído e rascunho continuam apenas em memória; recarregar a página perde o contexto e as edições.
 
 **Outcomes & Retrospective:** a navegação e o editor iniciam com os campos comprovados, e as alterações feitas no editor atualizam a prévia em tempo real. Nenhuma fase posterior foi iniciada.
+
+## Exportação local do currículo para PDF — resultado e retrospectiva
+
+**Objetivo:** permitir que a pessoa exporte a versão atual do `ResumeDraft` por impressão nativa do navegador, sem enviar o currículo para geração server-side.
+
+**Escopo concluído:** botão “Exportar como PDF” no editor; botão desabilitado e orientação quando o currículo está vazio; clique chama somente `window.print()`; CSS de impressão A4 mostra apenas a prévia HTML, esconde shell/editor/ações, preserva texto selecionável e tenta manter cada item profissional junto em uma página. Atualizado o registro de arquitetura e segurança para refletir a decisão local aprovada para o MVP.
+
+**Arquivos principais:** `features/resume/model.ts`, `features/resume/components/resume-builder.tsx`, `features/resume/resume-builder.css`, `tests/resume-builder.test.mjs`, `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/DECISIONS.md` e este plano.
+
+**Validação executada:** 72 testes passaram (`node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/*.test.mjs`); `npm run lint`; `npm run typecheck`; ESLint nos arquivos de `features/resume` alterados; `npm run build`; `git diff --check`. Currículo vazio deixou o botão desabilitado no navegador; preenchimento habilitou e o clique invocou `window.print()`. O navegador integrado não exibiu sua janela nativa de impressão; para revisar a saída, o motor local do Edge imprimiu fixtures HTML sintéticas com as mesmas regras CSS: o currículo curto gerou 1 página e o longo 2 páginas, ambas em 594,96 × 841,92 pt (A4). Texto extraído continha nome/conteúdo do currículo e não continha editor ou cabeçalho do site. Em viewport mobile de 390 px, a página ficou em 375 px sem overflow; console do navegador sem erros/avisos.
+
+**Descobertas e limitações:** regras `break-inside: avoid` são uma preferência do navegador; itens maiores que a área útil ainda podem ser divididos e o resultado visual pode variar entre navegadores. Em mobile, a edição continua responsiva, mas a impressão móvel depende das opções do navegador/dispositivo.
+
+**Decision Log:** para o MVP, impressão local substitui a proposta anterior de Playwright/Chromium server-side. Gerar/baixar PDF diretamente pelo servidor exigirá nova decisão; nenhum motor PDF foi adicionado.
+
+**Outcomes & Retrospective:** a exportação usa o mesmo HTML aprovado pelo usuário e não introduz persistência, rede ou envio a fornecedor. Nenhuma outra fase foi iniciada.

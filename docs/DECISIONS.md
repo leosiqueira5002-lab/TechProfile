@@ -11,7 +11,7 @@ Registre escolhas e questões em aberto. A arquitetura é proposta, não serviç
 | Upload PDF/DOCX | ATENÇÃO | Fluxo suporta ambos; encaminhar arquivo por Vercel Function falharia acima do body limit de 4,5 MB. Correção: upload direto autenticado ao Storage privado com política RLS e limites. |
 | Extração de texto | ATENÇÃO | `pdf-parse` e `mammoth` cobrem documento textual comum; scans, PDFs complexos e DOCX malicioso exigem falhas explícitas, limites e parser isolado. OCR fica fora até avaliação. |
 | Diagnóstico e otimização por IA | OK | API server-side e schema estruturado suportam os fluxos. Schema não prova factualidade; exigir vínculo com evidências e revisão humana. |
-| PDF final | ATENÇÃO | Playwright/Chromium produz layout fiel à versão aprovada. Bundle, sandbox, tempo, memória e custo na Vercel ainda precisam de prova de build/execução; se falhar, worker Node simples dedicado. |
+| PDF final para MVP | OK | Impressão nativa do HTML da prévia, apenas no navegador, com folha A4 e CSS de impressão. Não envia dados nem adiciona runtime/dependência. Playwright/Chromium server-side fica fora do MVP e só deve ser reconsiderado com requisito específico aprovado. |
 | Autenticação | OK | Supabase Auth com magic link é suficiente para acesso inicial; adicionar autorização server-side e RLS/grants para cada entidade. |
 | Armazenamento privado | ATENÇÃO | Bucket privado/RLS é adequado. Não usar service key em operações comuns; exclusão deve chamar API Storage e limpar os dados relacionados, pois excluir metadata isoladamente não remove o objeto. |
 | Retenção e exclusão | ATENÇÃO | “Original após 30 dias” não define texto, resultados, versões, logs, backups nem exclusão imediata. Definir prazos por categoria e procedimento antes de receber documentos reais. |
@@ -33,6 +33,7 @@ Registre escolhas e questões em aberto. A arquitetura é proposta, não serviç
 | 2026-09-23 | IA | `gpt-4.1-mini` permanece como modelo candidato e configurável até benchmark. | Sem aprovação final de fornecedor/retention. |
 | 2026-09-23 | Retenção | Persistência mínima prevista; prazos por categoria e exclusão completa devem ser aprovados. | Retenção de 30 dias para original era apenas proposta parcial. |
 | 2026-09-23 | Factualidade | Não inventar fatos e tratar lacuna como ausência no material; evidência e revisão humana obrigatórias. | Requisito do produto. |
+| 2026-09-26 | Exportação do currículo | Usar `window.print()` e `@media print`/`@page` A4 para imprimir somente a prévia HTML e permitir “Salvar como PDF”; desabilitar o botão sem conteúdo. | Aprovada para o MVP; local no navegador, sem dependências, chamadas ou persistência. |
 
 ## Aprovações necessárias antes da implementação afetada
 
@@ -43,7 +44,7 @@ Registre escolhas e questões em aberto. A arquitetura é proposta, não serviç
 - Confirmar limites por arquivo e suporte inicial a PDF textual/DOCX; escolher como tratar scans e documentos criptografados.
 - Aprovar fornecedores propostos (Supabase, OpenAI, Vercel, Stripe, Sentry) e orçamento mensal inicial.
 - Aprovar avaliação do modelo: currículo anonimizado, rubrica de factualidade/português, volume de exemplos e orçamento de testes. Modelo inicial continua `gpt-4.1-mini` até esse resultado.
-- Confirmar Vercel para Playwright depois de protótipo técnico verificar tamanho do bundle Chromium, sandbox, memória, duração e carga. Alternativa simples em caso de falha: um worker Node separado, introduzido apenas para a rota PDF.
+- Se surgir necessidade de PDF server-side no futuro, abrir decisão separada e validar isolamento, tamanho do runtime, sandbox, rede, memória, duração e carga; isso não é requisito nem dependência do MVP atual.
 - Definir preço a partir de custo por jornada e taxa de pagamento; não lançar paywall sem unit economics.
 
 ## Fontes oficiais consultadas

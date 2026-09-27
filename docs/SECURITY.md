@@ -35,7 +35,7 @@ O uso da API OpenAI não significa, por si só, ausência de retenção: a docum
 
 ## PDF gerado
 
-HTML do currículo deve ser criado apenas a partir de um modelo controlado e dados escapados; bloquear carregamento de recursos externos e navegação/URL arbitrária no Chromium para evitar SSRF. Executar Chromium com sandbox habilitado quando suportado, sem credenciais de Storage/DB na sessão de renderização, em contexto temporário e com timeout. Limitar páginas, tamanho e concorrência e descartar arquivo temporário ao responder.
+No MVP, a exportação usa `window.print()` no navegador e CSS de impressão sobre a prévia HTML; o usuário escolhe “Salvar como PDF”. O currículo não é enviado a servidor ou serviço externo para gerar o arquivo. A prévia continua usando conteúdo React escapado como texto, sem canvas ou HTML arbitrário. Se geração server-side for aprovada futuramente, revisar isolamento, rede, credenciais, limites de páginas/tempo e limpeza de temporários antes de implementá-la.
 
 ## Segredos e operação
 

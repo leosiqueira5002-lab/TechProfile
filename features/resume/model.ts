@@ -105,6 +105,10 @@ export function getVisibleResumeSections(draft: ResumeDraft): ResumeSectionKey[]
   return sections;
 }
 
+export function canExportResume(draft: ResumeDraft): boolean {
+  return getVisibleResumeSections(draft).length > 0;
+}
+
 function hasVisibleText(value: unknown): boolean {
   if (typeof value === "string") return hasResumeText(value);
   if (typeof value === "boolean") return value;

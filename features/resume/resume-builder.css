@@ -6,6 +6,55 @@
   color: #172033;
 }
 
+.resume-builder-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.resume-export-guidance {
+  margin: 0;
+  color: #68778a;
+  font-size: 12px;
+}
+
+.resume-export-button {
+  display: inline-flex;
+  min-height: 44px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #0a66c2;
+  border-radius: 8px;
+  background: #0a66c2;
+  padding: 0 16px;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease;
+}
+
+.resume-export-button:hover:not(:disabled) {
+  border-color: #16437e;
+  background: #16437e;
+}
+
+.resume-export-button:focus-visible {
+  outline: 3px solid #0a66c244;
+  outline-offset: 2px;
+}
+
+.resume-export-button:disabled {
+  border-color: #cbd6e1;
+  background: #e8edf2;
+  color: #68778a;
+  cursor: not-allowed;
+}
+
 .resume-builder-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, .9fr);
@@ -382,6 +431,16 @@
     flex-direction: row;
   }
 
+  .resume-builder-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .resume-export-button {
+    width: 100%;
+  }
+
   .resume-add-button {
     align-self: flex-start;
   }
@@ -402,5 +461,88 @@
 
   .resume-preview-header h1 {
     font-size: 21px;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 16mm 18mm;
+}
+
+@media print {
+  html,
+  body,
+  .analysis-page,
+  .analysis-main,
+  .analysis-content,
+  .curriculum-builder-content,
+  .resume-builder,
+  .resume-builder-grid {
+    width: auto !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  html,
+  body {
+    color: #172033 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .site-header,
+  .nextjs-portal,
+  .analysis-page-header,
+  .curriculum-preparation-note,
+  .resume-builder-toolbar,
+  .resume-editor,
+  .resume-preview-panel-heading {
+    display: none !important;
+  }
+
+  .resume-builder-grid {
+    display: block !important;
+  }
+
+  .resume-preview-panel {
+    position: static !important;
+    display: block !important;
+    width: auto !important;
+    border: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .resume-preview-sheet {
+    width: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: auto !important;
+    overflow: visible !important;
+    border: 0 !important;
+    padding: 0 !important;
+    color: #172033 !important;
+    font-family: Arial, Helvetica, sans-serif;
+    box-shadow: none !important;
+  }
+
+  .resume-preview-empty {
+    display: none !important;
+  }
+
+  .resume-preview-section h2 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+
+  .resume-preview-entry,
+  .resume-preview-skills li,
+  .resume-preview-list li {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
   }
 }

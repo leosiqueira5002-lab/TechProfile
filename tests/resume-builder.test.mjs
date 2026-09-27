@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   createEmptyResumeDraft,
+  canExportResume,
   getVisibleResumeSections,
   isValidOptionalEmail,
   isValidOptionalUrl,
@@ -53,6 +54,17 @@ test("getVisibleResumeSections omits blank and whitespace-only sections", () => 
   }];
 
   assert.deepEqual(getVisibleResumeSections(draft), ["projects"]);
+});
+
+test("an empty resume cannot be exported", () => {
+  const draft = createEmptyResumeDraft();
+  assert.equal(canExportResume(draft), false);
+});
+
+test("a resume with content can be exported", () => {
+  const draft = createEmptyResumeDraft();
+  draft.personalInfo.fullName = "Joana Silva";
+  assert.equal(canExportResume(draft), true);
 });
 
 test("a current experience remains visible even when its end date is empty", () => {
