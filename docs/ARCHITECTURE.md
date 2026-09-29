@@ -2,7 +2,7 @@
 
 ## Estado
 
-A aplicação Next.js já implementa landing page, upload/extração temporária, análise demonstrativa, editor em memória e exportação local por impressão. Supabase Auth foi integrado para cadastro/login por e-mail e senha. Banco de currículos, Storage, pagamentos, IA real e deploy continuam fora desta fase.
+A aplicação Next.js já implementa landing page, upload/extração temporária, análise demonstrativa, editor em memória e exportação local por impressão. Supabase Auth foi integrado para cadastro/login por e-mail e senha. Segundo o responsável, a base `profiles`/`payments` foi aplicada e validada no Supabase remoto em 2026-09-29; não foi reconsultada nesta etapa. Checkout/webhook Mercado Pago e uma RPC/migration aditiva foram implementados localmente, mas a nova migration ainda não foi aplicada ao remoto. Persistência de currículos, IA real e deploy continuam fora da implementação atual.
 
 ## Stack escolhida
 
@@ -17,7 +17,7 @@ A aplicação Next.js já implementa landing page, upload/extração temporária
 | Extração PDF/DOCX | Node.js server runtime; `pdf-parse` para PDF textual e `mammoth` para DOCX; limitar tamanho/páginas e rejeitar formatos não suportados | Bibliotecas focadas mantêm processamento local no servidor e evitam enviar o original a um extrator externo. | OCR/Tesseract e serviços de parsing aumentam custo, superfície e falsos resultados; imagem/scans ficam fora do primeiro escopo e devem ser explicados ao usuário. |
 | IA | OpenAI Responses API, manter `gpt-4.1-mini` como candidato configurável, saída JSON Schema e avaliação offline antes de produção | Custo/qualidade não podem ser inferidos apenas do rótulo mini; a escolha fica provisória até benchmark anonimizado, revisão factual e verificação atual de preço/retention. | Trocar por outro modelo sem comparação cria risco equivalente; modelo local e camada multi-provedor acrescentariam operação sem requisito. |
 | PDF final no MVP | HTML semântico da prévia, impresso pelo navegador com CSS `@media print`/`@page` A4; a pessoa escolhe “Salvar como PDF” | Reutiliza o currículo editado, mantém texto selecionável e não envia dados nem exige dependências ou renderização server-side. | Playwright/Chromium server-side e bibliotecas PDF adicionam runtime, custo e processamento de dados no servidor; só reconsiderar se houver requisito explícito de download direto ou exportação em lote. |
-| Pagamentos | Stripe Checkout hospedado, com webhook assinado como fonte de estado de pagamento/entitlement | Checkout reduz escopo de coleta de cartão e o webhook sincroniza acesso no servidor. | Formulário de cartão próprio aumenta escopo de segurança; pagamentos locais alternativos exigem análise de mercado, preço e disponibilidade brasileira antes da decisão final. Stripe permanece proposta sujeita à validação comercial e regional. |
+| Pagamentos | Mercado Pago Checkout Pro via Preferences API, Next.js Route Handlers e RPC PostgreSQL transacional para idempotência | Preço fixo server-side de R$ 19,90 BRL por 30 dias avulsos; webhook assinado reconsulta o pagamento antes de gravar/conceder; `external_reference` inclui UUID do usuário assinado pelo servidor. | Orders API, assinatura recorrente e SDK adicional não são necessários neste fluxo. Reembolso/chargeback e autorização de conteúdo Pro permanecem decisões futuras. |
 | Deploy | Vercel para aplicação Next.js; Supabase gerenciado para Postgres/Auth/Storage | Caminho direto para preview e deploy da aplicação, com responsabilidades separadas entre execução web e dados. | VPS/Docker exigiria operação de runtime e deploy desde o início; outras plataformas permanecem viáveis se limites de execução para Chromium/arquivos não forem adequados. |
 | Monitoramento/logs | Sentry para erros e tracing amostrado; logs estruturados do runtime da Vercel sem conteúdo de currículo, vaga ou perfil | Captura exceções e contexto técnico sem construir observabilidade própria. | Stack OpenTelemetry + collector + Grafana exige operação maior; logs do provedor são suficientes para a primeira fase. Rever custo e retenção antes de produção. |
 
@@ -33,7 +33,8 @@ A aplicação Next.js já implementa landing page, upload/extração temporária
 │   │   ├── documents/route.ts
 │   │   ├── analyses/route.ts
 │   │   ├── exports/pdf/route.ts
-│   │   └── webhooks/stripe/route.ts
+│   │   ├── checkout/route.ts
+│   │   └── webhooks/mercado-pago/route.ts
 │   ├── layout.tsx
 │   └── globals.css
 ├── components/          # Componentes visuais reutilizáveis
@@ -41,7 +42,7 @@ A aplicação Next.js já implementa landing page, upload/extração temporária
 │   ├── documents/       # Upload, validação e extração
 │   ├── analysis/        # Contratos, evidências e integração de IA
 │   ├── resume/          # Edição e exportação do currículo
-│   └── billing/         # Entitlements e integração Stripe
+│   └── billing/         # Helper local de validade Pro; sem autorização de recursos
 ├── lib/
 │   ├── supabase/        # Clientes browser/server e atualização de sessão no proxy
 │   ├── db/              # Cliente e consultas SQL
@@ -57,6 +58,12 @@ A aplicação Next.js já implementa landing page, upload/extração temporária
 ```
 
 É uma organização inicial por feature, não obrigação de criar todos os módulos de uma vez. Não adicionar fila, Redis, microsserviços ou painel administrativo até requisito real.
+
+## Base atual de perfis e pagamentos
+
+A migration `supabase/migrations/20260929000000_profiles_payments.sql` cria `public.profiles` e `public.payments` de forma aditiva. Profiles recebem um plano `free` por padrão; `plan` aceita `free` ou `pro`, e `pro_expires_at` começa nulo. Payments são identificados por provedor e ID externo único, com Mercado Pago como único provedor permitido inicialmente. Um trigger cria profile Free para novos Auth users e um backfill idempotente cobre usuários existentes sem sobrescrever perfis.
+
+RLS está habilitado nas duas tabelas. O role `authenticated` tem somente `SELECT` e somente sobre linhas próprias; `anon` não tem grants. Não há grants ou policies de escrita para clientes. `features/billing/access.ts` contém um helper puro para validade temporal Pro, ainda desconectado de autorização de recursos. O checkout/webhook estão implementados server-side; a migration local `20260929000100_mercado_pago_payment_processor.sql` acrescenta RPC transacional executável somente por `service_role`, sem escrita de tabela direta pelo navegador. Ela permanece sem aplicação remota até autorização separada.
 
 ## Caminho dos dados
 
@@ -99,9 +106,12 @@ Como o diagnóstico e o currículo otimizado precisam de revisão e retomada, a 
 | `SUPABASE_SERVICE_ROLE_KEY` | Operações privilegiadas restritas a servidor, se realmente necessárias | Segredo; evitar uso em rotas comuns |
 | `OPENAI_API_KEY` | Responses API | Segredo |
 | `OPENAI_MODEL` | Modelo selecionado/configurável | Servidor |
-| `STRIPE_SECRET_KEY` | Criar Checkout Session e consultar Stripe | Segredo |
-| `STRIPE_WEBHOOK_SECRET` | Validar assinatura de webhook | Segredo |
-| `STRIPE_PRICE_ID` | Preço aprovado associado ao paywall | Configuração server-side |
+| `MERCADO_PAGO_ACCESS_TOKEN` | Criar preferência e consultar pagamento na API Mercado Pago | Segredo server-side |
+| `MERCADO_PAGO_WEBHOOK_SECRET` | Validar HMAC `x-signature` da aplicação MP | Segredo server-side; deve ser gerado no painel de Webhooks |
+| `MERCADO_PAGO_MODE` | Separar seleção de URL sandbox/live e validar `live_mode` | Server-side: `test` ou `production` |
+| `NEXT_PUBLIC_APP_URL` | Formar `back_urls` e `notification_url` públicos | Origem pública HTTPS fora de desenvolvimento local |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chamar RPC de processamento privilegiado | Segredo server-side; nunca importar em Client Components |
+| `NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY` | Não necessária no checkout hospedado via redirecionamento | Pode permanecer configurada, mas não define valores nem valida pagamentos |
 | `SENTRY_DSN` | Reportar exceções; DSN web pode ser público, usar filtro de dados | Configuração |
 | `SENTRY_AUTH_TOKEN` | Upload de source maps no build, se ativado | Segredo de CI |
 
@@ -114,4 +124,3 @@ Segredos de deploy (por exemplo, a chave de conexão do Supabase e credenciais d
 - Supabase Auth e Storage privado/URLs assinadas: [Auth](https://supabase.com/docs/guides/auth), [downloads de Storage](https://supabase.com/docs/guides/storage/serving/downloads).
 - Políticas de acesso a objetos: [Supabase Storage Access Control](https://supabase.com/docs/guides/storage/security/access-control); exclusão via API é necessária para remover o objeto de fato.
 - OpenAI Structured Outputs e modelos: [Responses/saída estruturada](https://platform.openai.com/docs/api-reference/responses) e [modelos](https://platform.openai.com/docs/models).
-- Stripe Checkout: [quickstart](https://docs.stripe.com/payments/checkout/quickstarts) e [API Checkout Sessions](https://docs.stripe.com/api/checkout/sessions).

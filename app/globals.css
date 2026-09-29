@@ -48,6 +48,16 @@ button { font: inherit; }
 .mobile-menu nav a { border-radius: 7px; padding: 11px 10px; color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
 .mobile-menu nav a:hover { background: var(--brand-pale); color: var(--brand-dark); }
 
+.payment-return-page { min-height: 100vh; background: #f7f9fb; }
+.payment-return-header { display: flex; min-height: 76px; align-items: center; border-bottom: 1px solid var(--line); background: white; padding: 0 max(24px, calc((100vw - 1120px) / 2)); }
+.payment-return-header a { display: inline-flex; text-decoration: none; }
+.payment-return-header .brand-logo { width: 210px; }
+.payment-return-content { display: grid; width: min(100% - 40px, 620px); justify-items: start; gap: 18px; margin: clamp(64px, 12vh, 130px) auto 0; border: 1px solid var(--line); border-radius: 16px; background: white; padding: clamp(24px, 5vw, 48px); }
+.payment-return-content .section-eyebrow { margin: 0; }
+.payment-return-content h1 { margin: 0; color: var(--ink); font-size: clamp(30px, 5vw, 42px); letter-spacing: -.04em; line-height: 1.14; }
+.payment-return-content > p:not(.section-eyebrow) { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.7; }
+.payment-return-content .button-primary { margin-top: 4px; }
+
 .site-shell { overflow: clip; background: white; }
 .hero-section { background: linear-gradient(180deg, #f6f9fb 0%, #fff 100%); }
 .hero-layout { display: grid; width: min(100% - 64px, 1200px); min-height: 590px; grid-template-columns: minmax(0, 1.02fr) minmax(390px, .98fr); align-items: center; gap: clamp(42px, 7vw, 96px); margin: 0 auto; padding: 70px 0 74px; }
@@ -175,6 +185,9 @@ button { font: inherit; }
   .hero-dashboard { width: min(100%, 700px); justify-self: center; }
 }
 @media (max-width: 760px) {
+  .payment-return-header { min-height: 68px; padding: 0 18px; }
+  .payment-return-header .brand-logo { width: 176px; }
+  .payment-return-content { width: calc(100% - 32px); margin-top: 56px; }
   .site-header { min-height: 68px; padding: 0 18px; }
   .site-header > a:first-child .brand-logo { width: 190px; }
   .header-nav, .header-actions { display: none; }

@@ -1,6 +1,6 @@
 # Plano de trabalho — TechProfile AI
 
-Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva durante cada fase. O repositório agora contém a fundação Next.js, a landing page e o fluxo de upload/extração da Fase 2. Serviços externos continuam sem configuração; as aprovações listadas em `docs/DECISIONS.md` continuam necessárias antes de produção.
+Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva durante cada fase. O repositório contém a fundação Next.js, a landing page e o fluxo de upload/extração da Fase 2. Checkout Mercado Pago continua sem integração implementada; credenciais locais podem estar configuradas pelo responsável, e aprovações listadas em `docs/DECISIONS.md` continuam necessárias antes de produção.
 
 ## Progress
 
@@ -16,6 +16,8 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 - [x] Adicionar CTA pós-diagnóstico e página visual `/curriculo` em preparação, sem transferir ou persistir contexto.
 - [x] Conectar `/analise` ao editor `/curriculo` com rascunho factual compartilhado somente em memória.
 - [ ] Obter aprovação das decisões de produto, privacidade e fornecedores em `docs/DECISIONS.md`.
+- [x] Preparar migration aditiva de profiles/payments, RLS restritivo, trigger/backfill idempotentes e testes (sem aplicar ao remoto).
+- [ ] Revisar e aprovar especificação/plano do Mercado Pago Checkout Pro avulso antes da implementação.
 - [ ] Preparar autenticação, cotas/rate limit distribuído e política operacional antes de disponibilizar análise a usuários reais.
 
 ## Fase 0 — Alinhamento e fundação documental
@@ -339,3 +341,70 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Configuração manual pendente:** no Supabase Auth, confirmar provedor e-mail/senha, decisão de confirmação de e-mail, Site URL e allowlist de redirect URLs para `http://localhost:3000/auth/confirm` e domínio de produção. Configurar SMTP verificado para entrega confiável antes de uso público. Nenhum serviço foi alterado pela implementação.
 
 **Outcomes & Retrospective:** autenticação básica implementada sem tabela de credenciais, persistência própria, Storage ou mudanças no fluxo do currículo. O Supabase do ambiente está configurado, mas a validação de conta e e-mail não foi executada para evitar criar uma conta ou enviar e-mail sem dados/conta fornecidos pelo responsável. Os três testes de API de upload falharam por exigir uma sessão Storage ausente no fixture de integração; os outros 71 testes passaram. A integração continuará dependendo da configuração de redirect/SMTP do projeto antes de uso público.
+
+
+## Profiles e pagamentos — base de dados preparatória
+
+**Objetivo:** criar tabelas seguras de perfil Free/Pro e pagamentos, mais um helper local puro de validade Pro, sem iniciar cobrança ou autorização de recursos.
+
+**Escopo concluído:** migration aditiva para `public.profiles` e `public.payments`; RLS habilitado; roles de cliente limitados a leitura das próprias linhas; trigger seguro para profile Free; backfill idempotente; timestamps de atualização; unicidade por provedor e ID externo; helper `isProActive(profile, now)` sem conexão com autorização.
+
+**Arquivos principais:** `supabase/migrations/20260929000000_profiles_payments.sql`, `supabase/tests/database/20260929000000_profiles_payments.test.sql`, `features/billing/access.ts`, `tests/billing-access.test.mjs`, `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, `docs/DECISIONS.md`, especificação/plano em `docs/superpowers/`.
+
+**Dependências:** nenhuma dependência npm nova. A migration espera ambiente Supabase/PostgreSQL com roles padrão (`anon`, `authenticated`) e `gen_random_uuid()`.
+
+**Critérios de aceitação:** profile Free criado sem confiar em metadados do cliente; backfill não duplica nem sobrescreve perfis; RLS permite apenas leitura própria; usuários comuns não escrevem perfil/pagamentos; IDs duplicados de pagamento são rejeitados; helper Pro retorna ativo somente antes da expiração.
+
+**Validação:** 3 testes Node do helper; lint, typecheck, build, suíte Node completa e `git diff --check`. O arquivo pgTAP foi revisado estaticamente, mas não executado: este ambiente não tem Supabase CLI nem `psql`/PostgreSQL local. Nenhuma conexão ou aplicação remota foi feita.
+
+**Riscos e limitações:** migration ainda precisa ser revisada e aplicada manualmente em ambiente Supabase escolhido. Sem webhook, o banco não confirma transações nem atualiza plano. A constraint de unicidade previne duplicar uma referência externa, mas não implementa processamento idempotente de eventos. Ainda precisam ser definidos estados oficiais, preço, dias de acesso, reembolso/cancelamento e rotina backend confiável.
+
+**Surprises & Discoveries:** o repositório não continha migrations e o ambiente não oferece CLI/servidor Postgres local. Para respeitar o limite de segurança, a validação SQL ficou no nível de teste pgTAP escrito e revisão estática, sem instalar ferramentas ou usar o projeto remoto.
+
+**Decision Log:** Mercado Pago fica registrado como provedor futuro escolhido para avaliação, não configurado. A migration é aditiva e permanece local. O role comum recebe `SELECT` somente; mudanças privilegiadas de plano permanecem para desenho separado. `isProActive` é cálculo informativo puro, não proteção de rota/recurso.
+
+**Outcomes & Retrospective:** schema, controles e testes foram preparados sem checkout, webhook, credenciais, alteração de dados remotos ou grant de Pro em runtime. Nenhuma etapa posterior foi iniciada.
+
+
+## Supabase CLI — vínculo e inspeção remota
+
+**Objetivo:** configurar a CLI e inspecionar migrations sem alterar o banco remoto.
+
+**Concluído:** Node v24.14.0; Supabase CLI `2.118.0` em `devDependencies`; `supabase/config.toml` e ignore local inicializados sem sobrescrever migrations. CLI autenticada pelo fluxo oficial do navegador e projeto vinculado ao mesmo Project Ref obtido do hostname Supabase em `.env.local`, sem exibir URL ou publishable key.
+
+**Migrations:** há uma migration SQL local, `20260929000000_profiles_payments.sql`. `npx supabase migration list` mostrou essa versão sem correspondente remota; o histórico remoto não lista migrations. Consultas somente de leitura confirmaram que ainda não existem `public.profiles`, `public.payments`, as funções ou os triggers que a migration criará. O remoto usa PostgreSQL 17.6, tem `auth.users`, roles `anon`/`authenticated` e `gen_random_uuid()`.
+
+**Validação e limites:** nenhum `db push` ou alteração remota foi executado. Docker não está disponível, portanto os testes SQL pgTAP permanecem sem execução. `.env.local` continua ignorado; nenhum `service_role` está referenciado no frontend.
+
+**Resultado:** não foi encontrado conflito no histórico de migrations nem colisão com os objetos-alvo consultados. A migration está pronta para uma etapa futura de aplicação, sujeita a autorização explícita; considerar que pgTAP não foi executado neste ambiente.
+
+
+## Aplicação da migration profiles/payments
+
+**Resultado:** `npx supabase db push` aplicou somente `20260929000000_profiles_payments.sql`. `npx supabase migration list` confirmou a mesma versão local e remota. Nenhuma outra migration, seed ou role foi aplicada.
+
+**Verificação remota somente leitura:** tabelas, RLS, policies `profiles_select_own`/`payments_select_own`, funções `set_updated_at()`/`create_profile_for_new_auth_user()` e os três triggers previstos existem e estão ativos. A query retornou 1 profile no lote inicial (backfill), todos Free e com `pro_expires_at IS NULL`; 0 usuários Auth sem profile; 0 pagamentos. Nenhum usuário foi alterado para Pro.
+
+**Validação:** lint, typecheck, build, 79/79 testes Node e `git diff --check` passaram. pgTAP permanece sem execução porque Docker não está disponível. Nenhuma implementação de Checkout ou webhook foi iniciada.
+
+## Mercado Pago Checkout Pro — especificação e plano aprovados
+
+**Estado:** especificação aprovada e implementação local concluída. Conforme informado pelo responsável, a migration base `profiles`/`payments` foi aplicada e validada no Supabase remoto; não foi reconsultada nesta tarefa.
+
+**Decisão comercial confirmada:** pagamento avulso de R$ 19,90 BRL, quantidade 1, concedendo 30 dias. Cada aprovação nova estende a partir de `max(now(), pro_expires_at)`; mesmo pagamento aprovado repetido não concede outros 30 dias.
+
+**Arquivos de desenho:** `docs/superpowers/specs/2026-09-29-mercado-pago-checkout-pro-design.md` e `docs/superpowers/plans/2026-09-29-mercado-pago-checkout-pro.md`.
+
+**Arquitetura implementada:** Checkout Pro usa a Preferences API; `POST /api/checkout` autenticado deriva user ID via claims e fixa preço/dias no servidor; `POST /api/webhooks/mercado-pago` verifica HMAC, consulta `GET /v1/payments/{id}` e valida preço/moeda/usuário/status/modo antes da RPC. A migration aditiva cria RPC privilegiada e transacional para registrar pagamento e estender o profile uma vez. `/pagamento/sucesso`, `/pagamento/pendente` e `/pagamento/erro` são páginas estáticas e nunca concedem acesso.
+
+**Configuração prevista:** `MERCADO_PAGO_ACCESS_TOKEN`, novo `MERCADO_PAGO_WEBHOOK_SECRET`, novo `MERCADO_PAGO_MODE=test|production`, `NEXT_PUBLIC_APP_URL` público com HTTPS e `SUPABASE_SERVICE_ROLE_KEY` exclusivamente server-side para RPC. A Public Key do Mercado Pago não é necessária para checkout hospedado por redirecionamento.
+
+**Ruling durante a implementação:** `external_reference` simples contendo UUID não prova que a associação foi criada pelo servidor. O formato é `tp1:<user_uuid>:<HMAC-SHA256>` com secret oficial de Webhooks e manifesto `techprofile-checkout-v1:<user_uuid>`. Sem secret, checkout/webhook falham fechados. Rotacionar a secret invalida checkouts pendentes assinados com o valor anterior.
+
+**Migração e configuração manual:** criada `supabase/migrations/20260929000100_mercado_pago_payment_processor.sql`; `.env.example` contém placeholders. `NEXT_PUBLIC_APP_URL` usa a origem pública Vercel, e modo fica `test`. Para teste real em sandbox, selecionar explicitamente Access Token em **Credenciais de teste** no painel Mercado Pago, configurar Webhook Secret oficial, `SUPABASE_SERVICE_ROLE_KEY` server-side e notificação do tópico payment apontada ao HTTPS público. O prefixo do token não basta para distinguir teste de produção. Não foram feitas cobranças nem chamadas à API Mercado Pago.
+
+**Validação desta implementação:** suíte completa Node `104/104`; `npm run lint`, `npm run typecheck`, `npm run build` e `git diff --check` passaram. Node cobre autenticação, valores fixos, não adulteração, assinatura, estados, valor/moeda/referência/modo, delegação ao processamento transacional e páginas de retorno; pgTAP verifica grants, argumentos, transições e idempotência. Docker não está disponível, então pgTAP foi revisado estaticamente, mas não executado localmente.
+
+**Gate remoto:** `npx supabase migration list` mostrou `20260929000000` aplicada no remoto e `20260929000100` somente local. `npx supabase db push --dry-run` propôs somente `20260929000100_mercado_pago_payment_processor.sql` (sem seeds ou roles) e concluiu sem warning/erro. A operação não aplicou alterações; `npx supabase db push` não foi executado e requer autorização separada.
+
+**Decisões ainda abertas antes do lançamento:** termos, impostos/nota, política de reembolso/chargeback e operação de credenciais/teste-produção. Aplicação da migration remota e deploy continuarão exigindo autorização separada.
