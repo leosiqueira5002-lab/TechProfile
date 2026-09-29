@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import test from "node:test";
 import { createCheckoutExternalReference } from "../features/billing/mercado-pago.ts";
 import { createMercadoPagoWebhookHandler } from "../features/billing/mercado-pago-webhook.ts";
+import { verifyMercadoPagoWebhookSignature } from "../features/billing/mercado-pago-signature.ts";
 
 const env = {
   MERCADO_PAGO_ACCESS_TOKEN: "TEST-fake-token",
@@ -40,25 +42,59 @@ function tamperedReference(forUserId = userId) {
 test("webhook inválido não consulta pagamento nem grava dados", async () => {
   let lookups = 0;
   let writes = 0;
+  const logs = [];
   const handler = createMercadoPagoWebhookHandler({
     env,
-    verifySignature: () => false,
+    verifySignature: verifyMercadoPagoWebhookSignature,
     getPayment: async () => { lookups += 1; return payment(); },
     applyPayment: async () => { writes += 1; return "granted"; },
+    log: (event, metadata) => logs.push({ event, metadata }),
   });
   const response = await handler(makeRequest({ signature: "invalid" }));
   assert.equal(response.status, 401);
   assert.equal(lookups, 0);
   assert.equal(writes, 0);
+  assert.deepEqual(logs[0], {
+    event: "received",
+    metadata: { type: "payment", action: null, hasSignature: true, hasRequestId: true, hasDataId: true },
+  });
+  assert.equal(JSON.stringify(logs).includes("987654321"), false);
+  assert.equal(JSON.stringify(logs).includes(env.MERCADO_PAGO_WEBHOOK_SECRET), false);
 });
 
-test("notificação IPN merchant_order não passa pela validação do Webhook nem concede Pro", async () => {
+test("body.data.id nunca substitui o data.id ausente da query", async () => {
+  const dataId = "987654321";
+  const requestId = "req_fake";
+  const timestamp = "1780000000";
+  const manifest = `request-id:${requestId};ts:${timestamp};`;
+  const hash = createHmac("sha256", env.MERCADO_PAGO_WEBHOOK_SECRET).update(manifest).digest("hex");
+  const request = new Request("https://app.test/api/webhooks/mercado-pago?type=payment", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-signature": `ts=${timestamp},v1=${hash}`, "x-request-id": requestId },
+    body: JSON.stringify({ type: "payment", data: { id: dataId } }),
+  });
+  let lookups = 0;
+  let writes = 0;
+  const response = await createMercadoPagoWebhookHandler({
+    env,
+    verifySignature: verifyMercadoPagoWebhookSignature,
+    getPayment: async () => { lookups += 1; return payment(); },
+    applyPayment: async () => { writes += 1; return "granted"; },
+    log: () => {},
+  })(request);
+
+  assert.equal(response.status, 400);
+  assert.equal(lookups, 0);
+  assert.equal(writes, 0);
+});
+
+test("notificação IPN merchant_order sem assinatura é rejeitada e não concede Pro", async () => {
   let signatureChecks = 0;
   let lookups = 0;
   let grants = 0;
   const handler = createMercadoPagoWebhookHandler({
     env,
-    verifySignature: () => { signatureChecks += 1; return true; },
+    verifySignature: (input) => { signatureChecks += 1; return verifyMercadoPagoWebhookSignature(input); },
     getPayment: async () => { lookups += 1; return payment(); },
     applyPayment: async () => { grants += 1; return "granted"; },
   });
@@ -68,7 +104,7 @@ test("notificação IPN merchant_order não passa pela validação do Webhook ne
   ));
 
   assert.equal(response.status, 401);
-  assert.equal(signatureChecks, 0);
+  assert.equal(signatureChecks, 1);
   assert.equal(lookups, 0);
   assert.equal(grants, 0);
 });

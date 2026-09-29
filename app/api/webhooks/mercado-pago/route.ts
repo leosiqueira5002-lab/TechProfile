@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       if (error) throw new Error("Não foi possível registrar o pagamento.");
       return typeof data === "string" ? data : "recorded";
     },
+    log: (event, metadata) => console.info("mercado_pago_webhook", { event, ...metadata }),
   });
 
   return handler(request);

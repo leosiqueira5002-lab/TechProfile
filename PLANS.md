@@ -19,6 +19,7 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 - [x] Preparar migration aditiva de profiles/payments, RLS restritivo, trigger/backfill idempotentes e testes (sem aplicar ao remoto).
 - [x] Revisar, aprovar e implementar a especificação/plano do Mercado Pago Checkout Pro avulso (backend e migration local/remota autorizada em fase anterior).
 - [x] Conectar o header autenticado ao `POST /api/checkout`, sem enviar valores comerciais pelo navegador.
+- [x] Substituir a validação manual de assinatura do webhook Mercado Pago pelo `WebhookSignatureValidator` oficial (`mercadopago` 3.6.1), cobrindo campos ausentes e adicionando logs técnicos sem dados sensíveis; publicação permanece pendente.
 - [ ] Preparar autenticação, cotas/rate limit distribuído e política operacional antes de disponibilizar análise a usuários reais.
 
 ## Fase 0 — Alinhamento e fundação documental
