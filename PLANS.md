@@ -442,3 +442,11 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Observabilidade adicionada:** falhas de inicialização, resposta RPC e transporte agora produzem estágio, código SQLSTATE/PostgREST validado, resumo categorizado e marcadores de presença para `hint/details` redigidos. Os valores brutos de erro, chave, URL, IDs, referência e dados pessoais não são registrados. A categoria de erro permitirá identificar a causa no próximo runtime log sem executar transação de teste.
 
 **Validação:** testes unitários confirmam códigos/resumos permitidos e ausência de mensagem/hint/details crus. Regressões do webhook continuam cobrindo assinatura inválida sem lookup/RPC e status não aprovado sem concessão. pgTAP cobre estados e duplicidade, mas não foi executado por ausência de Docker/Podman e Supabase local. Publicação não realizada; os diagnósticos específicos do runtime só aparecerão após deploy autorizado.
+
+### Status do plano no header autenticado
+
+**Escopo:** `ProductLayout` usa o cliente Supabase SSR existente e a sessão validada para buscar somente `plan` e `pro_expires_at` do próprio usuário em `profiles`. `isProActive` calcula o status no servidor; o header recebe somente rótulo do badge, condição de exibição do CTA e validade já formatada. Profile ausente, inválido ou vencido aparece como Free; nenhum dado de `payments` é consultado e nenhuma autorização/pagamento é alterado.
+
+**Interface:** header autenticado exibe badge Free e mantém “Assinar Pro” quando não há Pro ativo. Para Pro ativo exibe badge Pro e “Pro até DD/MM/AAAA”, ocultando a ação de checkout. Mantido o estilo existente com badges discretos.
+
+**Validação:** testes cobrem Free, Pro ativo/validade, vencimento e profile ausente; lint, typecheck, build, suite Node e `git diff --check` registrados ao concluir a implementação. Sem deploy.

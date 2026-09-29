@@ -43,6 +43,10 @@ button { font: inherit; }
 .subscribe-pro-button:hover:not(:disabled) { background: #0756a6; }
 .subscribe-pro-button:disabled { cursor: wait; opacity: .7; }
 .subscribe-pro-error { position: absolute; top: calc(100% + 5px); right: 0; z-index: 2; width: max-content; max-width: min(300px, calc(100vw - 32px)); border: 1px solid #f1caca; border-radius: 6px; background: white; padding: 7px 9px; color: #9b2525; font-size: 11px; box-shadow: 0 4px 12px #162b4018; }
+.header-plan-status { display: inline-flex; flex: none; align-items: center; gap: 8px; white-space: nowrap; }
+.header-plan-badge { border: 1px solid var(--line); border-radius: 999px; background: #f6f8fa; padding: 4px 9px; color: #586575; font-size: 11px; font-weight: 700; }
+.header-plan-badge.is-pro { border-color: #cfe4f8; background: var(--brand-pale); color: var(--brand-dark); }
+.header-plan-expiry { color: var(--muted); font-size: 11px; }
 .button-secondary { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: white; padding: 0 18px; color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; transition: border-color .18s ease, background .18s ease; }
 .button-secondary:hover { border-color: #9bbbd7; background: #f9fcff; }
 .mobile-menu { display: none; position: relative; }
@@ -263,4 +267,5 @@ button { font: inherit; }
 .mobile-menu .subscribe-pro-control { margin: 4px 10px; }
 .mobile-menu .subscribe-pro-button { min-height: 38px; }
 .mobile-menu .subscribe-pro-error { top: auto; right: 0; bottom: calc(100% + 3px); }
+.mobile-menu .header-plan-status { padding: 7px 10px; }
 .login-submit:not(:disabled) { cursor: pointer; }
