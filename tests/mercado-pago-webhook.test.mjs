@@ -147,12 +147,26 @@ test("pagamento aprovado verificado é entregue à gravação transacional", asy
   });
 });
 
-test("amount, currency, external_reference, modo e ID divergentes não gravam", async (t) => {
+test("pagamento sandbox aprovado não é bloqueado por payment.live_mode divergente", async () => {
+  let processed;
+  const handler = createMercadoPagoWebhookHandler({
+    env,
+    verifySignature: () => true,
+    getPayment: async () => payment({ live_mode: true }),
+    applyPayment: async (value) => { processed = value; return "granted"; },
+  });
+
+  const response = await handler(makeRequest());
+  assert.equal(response.status, 200);
+  assert.equal(processed.status, "approved");
+  assert.equal(processed.providerPaymentId, "987654321");
+});
+
+test("amount, currency, external_reference e ID divergentes não gravam", async (t) => {
   const cases = [
     ["amount", payment({ transaction_amount: 2 })],
     ["currency", payment({ currency_id: "USD" })],
     ["reference", payment({ external_reference: tamperedReference("c7a950c6-7baf-4d5c-a164-d3d3c05fc7d3") })],
-    ["mode", payment({ live_mode: true })],
     ["id", payment({ id: "111111111" })],
   ];
   for (const [label, actualPayment] of cases) {

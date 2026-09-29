@@ -54,12 +54,18 @@ test("checkout production usa somente init_point", async () => {
 
 test("consulta pagamento usa token no servidor e retorna os campos verificados", async () => {
   let request;
-  const payment = { id: 987654321, status: "approved", currency_id: "BRL", transaction_amount: 19.9, external_reference: "c7a950c6-7baf-4d5c-a164-d3d3c05fc7d2", live_mode: false };
+  const payment = { id: 987654321, status: "approved", currency_id: "BRL", transaction_amount: 19.9, external_reference: "c7a950c6-7baf-4d5c-a164-d3d3c05fc7d2", live_mode: true };
   const result = await getMercadoPagoPayment("987654321", {
     env,
     fetchImpl: async (url, init) => { request = { url, init }; return Response.json(payment); },
   });
   assert.equal(request.url, "https://api.mercadopago.com/v1/payments/987654321");
   assert.equal(request.init.headers.authorization, "Bearer TEST-fake-access-token");
-  assert.deepEqual(result, payment);
+  assert.deepEqual(result, {
+    id: payment.id,
+    status: payment.status,
+    currency_id: payment.currency_id,
+    transaction_amount: payment.transaction_amount,
+    external_reference: payment.external_reference,
+  });
 });

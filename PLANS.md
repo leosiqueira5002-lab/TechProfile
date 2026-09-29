@@ -424,3 +424,11 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Validação:** a regressão do payload falhou antes da remoção e passou depois; o teste de assinatura inválida segue retornando 401 sem consulta ou gravação; 111/111 testes Node, lint, typecheck, build de produção e `git diff --check` passaram. Nenhum serviço foi chamado e nenhum deploy foi feito.
 
 **Decisões ainda abertas antes do lançamento:** termos, impostos/nota, política de reembolso/chargeback e operação de credenciais/teste-produção. Aplicação da migration remota e deploy continuarão exigindo autorização separada.
+
+### Correção do gate de ambiente do webhook Mercado Pago
+
+**Descoberta:** o webhook validava `payment.live_mode === (MERCADO_PAGO_MODE === "production")`. Um pagamento consultado server-side com `live_mode: true` era então reconhecido como `mode_mismatch` em configuração `test`, mesmo com assinatura válida e checkout sandbox. A documentação oficial consultada descreve credenciais de teste separadas e consulta autenticada de pagamentos, mas não exige essa igualdade para Checkout Pro Preferences; o campo observado não é adequado como vínculo obrigatório de ambiente.
+
+**Correção:** a configuração `MERCADO_PAGO_MODE` continua validada e seleciona sandbox/live na criação da preferência; o `MERCADO_PAGO_ACCESS_TOKEN` server-side correspondente continua sendo usado para consultar o pagamento. A resposta `live_mode` deixou de ser requisito de schema/gate. Permanecem obrigatórias assinatura oficial, evento payment, ID consultado igual ao notificado, status `approved` para concessão pela RPC, valor BRL 19,90, `external_reference` assinada associada ao usuário, unicidade do pagamento e concessão transacional idempotente. Não foram alterados banco, credenciais ou deployment.
+
+**Testes e validação:** `npm run lint`, `npm run typecheck`, `npm run build`, suite Node completa (`114/114`) e `git diff --check` passaram. A regressão cobre webhook sandbox aprovado com `live_mode` divergente; casos de amount, currency, reference e ID errados continuam bloqueados; testes Node cobrem assinatura inválida sem consulta/gravação e status não aprovado enviado à RPC sem concessão. pgTAP contém casos de aprovação/não aprovação e duplicidade sem extensão de validade; não foi executado porque Docker/Podman e Supabase local não estão disponíveis neste ambiente.

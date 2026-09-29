@@ -134,16 +134,13 @@ export function createMercadoPagoWebhookHandler({
       return acknowledgement();
     }
 
-    let mode: string;
     try {
-      mode = getMercadoPagoConfig(env).mode;
+      // The configured server-side credentials select the payment environment.
+      // Mercado Pago's payment.live_mode is not a documented binding check for this flow.
+      getMercadoPagoConfig(env);
     } catch {
       log("failed", { stage: "configuration", result: "invalid_mode" });
       return acknowledgement(503);
-    }
-    if (payment.live_mode !== (mode === "production")) {
-      log("payment_validation", { result: "mode_mismatch" });
-      return acknowledgement();
     }
     const userId = verifyCheckoutExternalReference(payment.external_reference, secret);
     if (

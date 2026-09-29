@@ -20,7 +20,6 @@ export type VerifiedPaymentPayload = {
   currency_id: string;
   transaction_amount: number;
   external_reference: string | null;
-  live_mode: boolean;
 };
 
 export class MercadoPagoError extends Error {
@@ -170,8 +169,7 @@ export async function getMercadoPagoPayment(
     typeof payment.status !== "string" ||
     typeof payment.currency_id !== "string" ||
     typeof payment.transaction_amount !== "number" ||
-    (payment.external_reference !== null && typeof payment.external_reference !== "string") ||
-    typeof payment.live_mode !== "boolean"
+    (payment.external_reference !== null && typeof payment.external_reference !== "string")
   ) {
     throw new MercadoPagoError("Resposta inválida ao consultar o pagamento.");
   }
@@ -182,6 +180,5 @@ export async function getMercadoPagoPayment(
     currency_id: payment.currency_id,
     transaction_amount: payment.transaction_amount,
     external_reference: payment.external_reference,
-    live_mode: payment.live_mode,
   };
 }

@@ -108,7 +108,7 @@ Como o diagnóstico e o currículo otimizado precisam de revisão e retomada, a 
 | `OPENAI_MODEL` | Modelo selecionado/configurável | Servidor |
 | `MERCADO_PAGO_ACCESS_TOKEN` | Criar preferência e consultar pagamento na API Mercado Pago | Segredo server-side |
 | `MERCADO_PAGO_WEBHOOK_SECRET` | Validar HMAC `x-signature` da aplicação MP | Segredo server-side; deve ser gerado no painel de Webhooks |
-| `MERCADO_PAGO_MODE` | Separar seleção de URL sandbox/live e validar `live_mode` | Server-side: `test` ou `production` |
+| `MERCADO_PAGO_MODE` | Selecionar URL sandbox/live; usar credenciais de teste ou produção correspondentes no servidor | Server-side: `test` ou `production`; não comparar com `payment.live_mode` da resposta |
 | `NEXT_PUBLIC_APP_URL` | Formar `back_urls` e `notification_url` públicos | Origem pública HTTPS fora de desenvolvimento local |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chamar RPC de processamento privilegiado | Segredo server-side; nunca importar em Client Components |
 | `NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY` | Não necessária no checkout hospedado via redirecionamento | Pode permanecer configurada, mas não define valores nem valida pagamentos |
