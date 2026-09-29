@@ -52,6 +52,27 @@ test("webhook inválido não consulta pagamento nem grava dados", async () => {
   assert.equal(writes, 0);
 });
 
+test("notificação IPN merchant_order não passa pela validação do Webhook nem concede Pro", async () => {
+  let signatureChecks = 0;
+  let lookups = 0;
+  let grants = 0;
+  const handler = createMercadoPagoWebhookHandler({
+    env,
+    verifySignature: () => { signatureChecks += 1; return true; },
+    getPayment: async () => { lookups += 1; return payment(); },
+    applyPayment: async () => { grants += 1; return "granted"; },
+  });
+  const response = await handler(new Request(
+    "https://app.test/api/webhooks/mercado-pago?topic=merchant_order&id=123456",
+    { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: "123456" }) },
+  ));
+
+  assert.equal(response.status, 401);
+  assert.equal(signatureChecks, 0);
+  assert.equal(lookups, 0);
+  assert.equal(grants, 0);
+});
+
 test("webhook pending e rejected são persistidos sem conceder Pro", async (t) => {
   for (const status of ["pending", "rejected"]) {
     await t.test(status, async () => {

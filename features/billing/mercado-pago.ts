@@ -121,7 +121,6 @@ export async function createMercadoPagoPreference({
         failure: new URL("/pagamento/erro", origin).toString(),
       },
       auto_return: "approved",
-      notification_url: new URL("/api/webhooks/mercado-pago", origin).toString(),
     }),
     signal: AbortSignal.timeout(10_000),
   });

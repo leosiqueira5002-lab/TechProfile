@@ -414,4 +414,12 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 
 **Validação:** 110 testes Node, lint, typecheck, build de produção e `git diff --check` passaram. Não foi iniciado checkout nem feita chamada externa ao Mercado Pago.
 
+### Separação de IPN e Webhooks
+
+**Descoberta:** a preferência incluía `notification_url` apontando ao endpoint que valida Webhooks assinados. Os logs mostraram requests no formato legado `topic/id`, incompatível com o contrato do handler (`data.id/type` e assinatura). A documentação do Mercado Pago identifica `notification_url` como URL configurável na preferência para notificações IPN; o painel Webhooks configura a URL e os eventos assinados de forma independente.
+
+**Correção:** a preferência não envia mais `notification_url`; mantêm-se `back_urls`, preço e prazo. O endpoint continua aceitando somente o caminho autenticado de Webhook para `payment`; notificação IPN `merchant_order` não consulta pagamento nem concede Pro. O recebimento passa a depender do evento de pagamento habilitado no painel Webhooks.
+
+**Validação:** a regressão do payload falhou antes da remoção e passou depois; o teste de assinatura inválida segue retornando 401 sem consulta ou gravação; 111/111 testes Node, lint, typecheck, build de produção e `git diff --check` passaram. Nenhum serviço foi chamado e nenhum deploy foi feito.
+
 **Decisões ainda abertas antes do lançamento:** termos, impostos/nota, política de reembolso/chargeback e operação de credenciais/teste-produção. Aplicação da migration remota e deploy continuarão exigindo autorização separada.

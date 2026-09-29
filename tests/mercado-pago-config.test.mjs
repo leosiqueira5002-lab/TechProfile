@@ -38,7 +38,7 @@ test("preferência ignora valores do cliente e usa preço BRL fixo e 30 dias", a
     pending: "https://tech-profile-12ql.vercel.app/pagamento/pendente",
     failure: "https://tech-profile-12ql.vercel.app/pagamento/erro",
   });
-  assert.equal(body.notification_url, "https://tech-profile-12ql.vercel.app/api/webhooks/mercado-pago");
+  assert.equal(Object.hasOwn(body, "notification_url"), false);
   assert.equal(body.auto_return, "approved");
 });
 
