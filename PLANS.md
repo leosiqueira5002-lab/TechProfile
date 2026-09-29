@@ -1,6 +1,6 @@
 # Plano de trabalho — TechProfile AI
 
-Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva durante cada fase. O repositório contém a fundação Next.js, a landing page e o fluxo de upload/extração da Fase 2. Checkout Mercado Pago continua sem integração implementada; credenciais locais podem estar configuradas pelo responsável, e aprovações listadas em `docs/DECISIONS.md` continuam necessárias antes de produção.
+Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva durante cada fase. O repositório contém a fundação Next.js, o fluxo de upload/extração e a integração Mercado Pago server-side com entrada autenticada no checkout; credenciais locais podem estar configuradas pelo responsável, e aprovações listadas em `docs/DECISIONS.md` continuam necessárias antes de produção.
 
 ## Progress
 
@@ -17,7 +17,8 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 - [x] Conectar `/analise` ao editor `/curriculo` com rascunho factual compartilhado somente em memória.
 - [ ] Obter aprovação das decisões de produto, privacidade e fornecedores em `docs/DECISIONS.md`.
 - [x] Preparar migration aditiva de profiles/payments, RLS restritivo, trigger/backfill idempotentes e testes (sem aplicar ao remoto).
-- [ ] Revisar e aprovar especificação/plano do Mercado Pago Checkout Pro avulso antes da implementação.
+- [x] Revisar, aprovar e implementar a especificação/plano do Mercado Pago Checkout Pro avulso (backend e migration local/remota autorizada em fase anterior).
+- [x] Conectar o header autenticado ao `POST /api/checkout`, sem enviar valores comerciais pelo navegador.
 - [ ] Preparar autenticação, cotas/rate limit distribuído e política operacional antes de disponibilizar análise a usuários reais.
 
 ## Fase 0 — Alinhamento e fundação documental
@@ -406,5 +407,11 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Validação desta implementação:** suíte completa Node `104/104`; `npm run lint`, `npm run typecheck`, `npm run build` e `git diff --check` passaram. Node cobre autenticação, valores fixos, não adulteração, assinatura, estados, valor/moeda/referência/modo, delegação ao processamento transacional e páginas de retorno; pgTAP verifica grants, argumentos, transições e idempotência. Docker não está disponível, então pgTAP foi revisado estaticamente, mas não executado localmente.
 
 **Gate remoto:** `npx supabase migration list` mostrou `20260929000000` aplicada no remoto e `20260929000100` somente local. `npx supabase db push --dry-run` propôs somente `20260929000100_mercado_pago_payment_processor.sql` (sem seeds ou roles) e concluiu sem warning/erro. A operação não aplicou alterações; `npx supabase db push` não foi executado e requer autorização separada.
+
+### Entrada de checkout no frontend
+
+**Estado:** implementada no header autenticado, antes de “Sair”, tanto no desktop quanto no menu mobile. O botão executa somente `POST /api/checkout`, sem body; o servidor continua determinando usuário, preço e prazo. A resposta validada usa `checkoutUrl` e o navegador navega para a URL HTTPS retornada. Enquanto aguarda, o botão fica desabilitado e exibe “Abrindo pagamento...”; falhas mostram uma mensagem amigável. Nenhum status de plano foi adicionado ao header porque não havia consulta de profile já existente no shell.
+
+**Validação:** 110 testes Node, lint, typecheck, build de produção e `git diff --check` passaram. Não foi iniciado checkout nem feita chamada externa ao Mercado Pago.
 
 **Decisões ainda abertas antes do lançamento:** termos, impostos/nota, política de reembolso/chargeback e operação de credenciais/teste-produção. Aplicação da migration remota e deploy continuarão exigindo autorização separada.

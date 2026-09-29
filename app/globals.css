@@ -38,6 +38,11 @@ button { font: inherit; }
 .header-actions { display: flex; flex: none; align-items: center; gap: 18px; }
 .header-cta, .button-primary { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--brand-blue); border-radius: 8px; background: var(--brand-blue); padding: 0 19px; color: white; font-size: 14px; font-weight: 700; text-decoration: none; transition: background .18s ease, box-shadow .18s ease, transform .18s ease; }
 .header-cta:hover, .button-primary:hover { transform: translateY(-1px); background: #0756a6; box-shadow: 0 5px 14px #0a66c222; }
+.subscribe-pro-control { display: inline-flex; position: relative; align-items: center; }
+.subscribe-pro-button { min-height: 36px; border: 1px solid var(--brand-blue); border-radius: 7px; background: var(--brand-blue); padding: 0 13px; color: white; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .18s ease, opacity .18s ease; }
+.subscribe-pro-button:hover:not(:disabled) { background: #0756a6; }
+.subscribe-pro-button:disabled { cursor: wait; opacity: .7; }
+.subscribe-pro-error { position: absolute; top: calc(100% + 5px); right: 0; z-index: 2; width: max-content; max-width: min(300px, calc(100vw - 32px)); border: 1px solid #f1caca; border-radius: 6px; background: white; padding: 7px 9px; color: #9b2525; font-size: 11px; box-shadow: 0 4px 12px #162b4018; }
 .button-secondary { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: white; padding: 0 18px; color: var(--ink); font-size: 14px; font-weight: 700; text-decoration: none; transition: border-color .18s ease, background .18s ease; }
 .button-secondary:hover { border-color: #9bbbd7; background: #f9fcff; }
 .mobile-menu { display: none; position: relative; }
@@ -255,4 +260,7 @@ button { font: inherit; }
 .sign-out-error { max-width: 220px; color: #9b2525; font-size: 11px; }
 .mobile-menu .sign-out-control { padding: 8px 10px; }
 .mobile-menu .sign-out-button { padding: 4px 0; text-align: left; }
+.mobile-menu .subscribe-pro-control { margin: 4px 10px; }
+.mobile-menu .subscribe-pro-button { min-height: 38px; }
+.mobile-menu .subscribe-pro-error { top: auto; right: 0; bottom: calc(100% + 3px); }
 .login-submit:not(:disabled) { cursor: pointer; }

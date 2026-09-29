@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowIcon } from "@/components/arrow-icon";
 import { Brand } from "@/components/brand";
 import { SignOutButton } from "@/components/sign-out-button";
+import { SubscribeProButton } from "@/components/subscribe-pro-button";
 
 const links = [
   { href: "/analise", label: "Analisar currículo" },
@@ -17,10 +18,10 @@ export function SiteHeader({ authenticated = false }: { authenticated?: boolean 
       <nav aria-label="Navegação principal" className="header-nav">
         {links.map((link) => <a href={link.href} key={link.label}>{link.label}</a>)}
       </nav>
-      <div className="header-actions">{authenticated ? <SignOutButton /> : <><a className="header-login" href="/entrar">Entrar</a><a className="header-cta" href="/analise">Começar agora <ArrowIcon className="size-4"/></a></>}</div>
+      <div className="header-actions">{authenticated ? <><SubscribeProButton /><SignOutButton /></> : <><a className="header-login" href="/entrar">Entrar</a><a className="header-cta" href="/analise">Começar agora <ArrowIcon className="size-4"/></a></>}</div>
       <details className="mobile-menu">
         <summary aria-label="Abrir menu"><i/><i/><i/></summary>
-        <nav aria-label="Menu principal para celular">{links.map((link) => <a href={link.href} key={link.label}>{link.label}</a>)}{authenticated ? <SignOutButton /> : <><a href="/entrar">Entrar</a><a className="button-primary" href="/analise">Começar agora <ArrowIcon className="size-4"/></a></>}</nav>
+        <nav aria-label="Menu principal para celular">{links.map((link) => <a href={link.href} key={link.label}>{link.label}</a>)}{authenticated ? <><SubscribeProButton /><SignOutButton /></> : <><a href="/entrar">Entrar</a><a className="button-primary" href="/analise">Começar agora <ArrowIcon className="size-4"/></a></>}</nav>
       </details>
     </header>
   );
