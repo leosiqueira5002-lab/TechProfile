@@ -6,13 +6,20 @@ import type { ResumeDraft } from "./types.ts";
 type ResumeDraftContextValue = {
   draft: ResumeDraft | null;
   setDraft: (draft: ResumeDraft | null) => void;
+  canExportPdf: boolean;
 };
 
 const ResumeDraftContext = createContext<ResumeDraftContextValue | null>(null);
 
-export function ResumeDraftProvider({ children }: { children: ReactNode }) {
+export function ResumeDraftProvider({
+  children,
+  canExportPdf,
+}: {
+  children: ReactNode;
+  canExportPdf: boolean;
+}) {
   const [draft, setDraft] = useState<ResumeDraft | null>(null);
-  return <ResumeDraftContext.Provider value={{ draft, setDraft }}>{children}</ResumeDraftContext.Provider>;
+  return <ResumeDraftContext.Provider value={{ draft, setDraft, canExportPdf }}>{children}</ResumeDraftContext.Provider>;
 }
 
 export function useResumeDraftContext(): ResumeDraftContextValue {

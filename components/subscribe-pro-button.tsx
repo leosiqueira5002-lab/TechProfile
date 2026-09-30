@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { createCheckoutAction } from "@/features/billing/checkout-client";
 
-export function SubscribeProButton() {
+export function SubscribeProButton({ label = "Assinar Pro" }: { label?: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const redirect = useCallback((url: string) => window.location.assign(url), []);
@@ -23,7 +23,7 @@ export function SubscribeProButton() {
         onClick={() => { void startCheckout(); }}
         type="button"
       >
-        {loading ? "Abrindo pagamento..." : "Assinar Pro"}
+        {loading ? "Abrindo pagamento..." : label}
       </button>
       {error && <span className="subscribe-pro-error" role="alert">{error}</span>}
     </span>

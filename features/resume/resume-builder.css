@@ -14,10 +14,43 @@
   margin-bottom: 16px;
 }
 
+.resume-builder-toolbar-copy {
+  min-width: 0;
+  flex: 1;
+}
+
 .resume-export-guidance {
   margin: 0;
   color: #68778a;
   font-size: 12px;
+}
+
+.resume-export-upgrade {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 10px;
+  border: 1px solid #c9ddf1;
+  border-radius: 9px;
+  background: #f6faff;
+  padding: 13px 15px;
+}
+
+.resume-export-upgrade > div {
+  display: grid;
+  gap: 4px;
+}
+
+.resume-export-upgrade strong {
+  color: #172033;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.resume-export-upgrade span {
+  color: #68778a;
+  font-size: 11px;
 }
 
 .resume-export-button {
@@ -439,6 +472,11 @@
 
   .resume-export-button {
     width: 100%;
+  }
+
+  .resume-export-upgrade {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .resume-add-button {

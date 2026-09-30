@@ -450,3 +450,23 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Interface:** header autenticado exibe badge Free e mantém “Assinar Pro” quando não há Pro ativo. Para Pro ativo exibe badge Pro e “Pro até DD/MM/AAAA”, ocultando a ação de checkout. Mantido o estilo existente com badges discretos.
 
 **Validação:** testes cobrem Free, Pro ativo/validade, vencimento e profile ausente; lint, typecheck, build, suite Node e `git diff --check` registrados ao concluir a implementação. Sem deploy.
+
+### Controle Pro da exportação PDF
+
+**Objetivo e escopo:** limitar a impressão/exportação local de PDF a profiles Pro ativos. Free conserva upload, análise, editor e preview; ao tentar exportar, recebe indicação “Disponível no Pro” e um CTA que reutiliza o checkout existente. Sem mudar preço, prazo, checkout server-side, banco ou persistência.
+
+**Arquivos relevantes:** `app/(product)/layout.tsx`, `features/resume/resume-draft-context.tsx`, `features/resume/components/resume-builder-from-context.tsx`, `features/resume/components/resume-builder.tsx`, `features/resume/export-access.ts`, `features/resume/resume-builder.css`, `components/subscribe-pro-button.tsx` e testes de acesso/checkout.
+
+**Decisão e risco:** reutilizar o resultado server-side de `getBillingPresentation` (que chama `isProActive`) e passar somente um booleano pelo provider em memória existente. Como `window.print()` é local ao navegador, o gate controla a interface e o handler; não representa proteção de conteúdo persistido nem autorização server-side de arquivo. A ação de checkout continua sem preço ou prazo no cliente.
+
+**Critérios de aceitação:** Free não alcança `window.print()`, vê o estado bloqueado e CTA; Pro ativo imprime currículo não vazio; currículo vazio segue sem impressão; profile ausente/vencido resulta em Free; CTA continua usando `POST /api/checkout` sem dados comerciais; nenhum segredo server-side entra no bundle client-side.
+
+**Validação:** `npm run lint`, `npm run typecheck`, `npm run build`, `node --test tests/*.test.mjs` (125/125) e `git diff --check` passaram. Testes cobrem Free bloqueado sem impressão, CTA, Pro imprimindo, profile ausente/vencido, currículo vazio e ausência de service role nos módulos client-side; a suíte de checkout existente confirma POST sem preço/prazo.
+
+**Progress:** implementação e validação completas; nenhuma chamada de pagamento ou deploy foi realizada.
+
+**Surprises & Discoveries:** o shell autenticado já carregava o profile e derivava Free/Pro para o header; o provider do rascunho em memória oferece um canal mínimo para compartilhar esse estado derivado sem duplicar consultas nem criar persistência.
+
+**Decision Log:** reaproveitar `ResumeDraftProvider` e `SubscribeProButton`; manter a assinatura de impressão na UI client-side, mas protegida pelo valor de acesso calculado no servidor e pela regra de conteúdo não vazio.
+
+**Outcomes & Retrospective:** o gate foi adicionado sem alterar a rota de checkout ou a arquitetura de pagamentos. A impressão local é controlada pela UI com valor de acesso derivado server-side; não há proteção de arquivo no servidor, pois o PDF é produzido pelo navegador.
