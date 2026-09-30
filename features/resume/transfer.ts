@@ -52,7 +52,7 @@ function exactEvidence<T extends EvidenceItem>(items: T[], source: string): T[] 
     .filter((item) => item.evidence.length > 0);
 }
 
-function extractPersonalInfo(source: string): ResumeDraft["personalInfo"] {
+export function extractResumePersonalInfo(source: string): ResumeDraft["personalInfo"] {
   const lines = sourceLines(source);
   const email = /[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/.exec(source)?.[0] ?? "";
   const labeledName = lines.map((line) => /^\s*(?:nome|name)\s*[:\-]\s*(.+)$/i.exec(line)?.[1]?.trim()).find(Boolean);
@@ -231,7 +231,7 @@ function mapSummary(source: string): string {
 export function mapResumeToDraft({ extractedText, role, analysis }: ResumeTransferInput): ResumeDraft {
   const draft = createEmptyResumeDraft();
   const source = extractedText.normalize("NFC");
-  draft.personalInfo = extractPersonalInfo(source);
+  draft.personalInfo = extractResumePersonalInfo(source);
   draft.desiredRole = role.trim();
   draft.summary = mapSummary(source);
   draft.education = mapEducation(analysis.education, source);

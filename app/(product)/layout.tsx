@@ -41,7 +41,7 @@ export default async function ProductLayout({ children }: { children: ReactNode 
   const billing = getBillingPresentation(profile, new Date());
 
   return (
-    <ResumeDraftProvider canExportPdf={billing.badgeLabel === "Pro"}>
+    <ResumeDraftProvider canExportPdf={billing.badgeLabel === "Pro"} canGenerateResume={billing.badgeLabel === "Pro"}>
       <SiteHeader authenticated billing={billing} />
       {children}
     </ResumeDraftProvider>

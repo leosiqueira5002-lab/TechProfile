@@ -1,12 +1,12 @@
 # Segurança e privacidade
 
-Esta auditoria é documental. Nenhum serviço ou controle está configurado e as medidas abaixo ainda precisam ser implementadas e verificadas antes de produção.
+Este documento descreve controles existentes e pendências. A geração Gemini foi implementada localmente para profile Pro ativo; nenhuma chamada real ou deployment ocorreu nesta etapa.
 
 ## Dados e minimização
 
 Currículos podem conter nome, e-mail, telefone, endereço, foto, histórico profissional e outros dados pessoais. Para diagnóstico, a IA geralmente precisa das experiências, competências e formação, não dos contatos diretos. A implementação deve remover ou substituir nome, e-mail, telefone, endereço, foto e identificadores desnecessários antes de enviar texto ao provedor; preservar contexto factual útil. Não enviar o binário original ao modelo. Informar claramente o processamento por fornecedor antes do envio e evitar envio até a ação/consentimento aplicável.
 
-O uso da API OpenAI não significa, por si só, ausência de retenção: a documentação atual descreve logs de monitoramento de abuso que podem conter prompts e respostas e, por padrão, serem retidos por até 30 dias. Verificar controles e contrato da conta antes de produção; não prometer retenção zero sem confirmação elegível. Não persistir estado de resposta do provedor desnecessariamente.
+O responsável confirmou que o projeto Gemini usa Paid Services. Nesse nível, prompts/respostas não são usados para melhoria de produtos, mas podem ser retidos por período limitado para segurança/abuso e processados em países onde Google ou agentes operam. Não prometer retenção zero; informar antes do envio e revisar termos/aviso de privacidade. Gemini é usado somente para otimização nesta fase; o diagnóstico segue no provider demo selecionado.
 
 ## Upload e processamento de arquivos
 
@@ -51,6 +51,14 @@ O uso da API OpenAI não significa, por si só, ausência de retenção: a docum
 - Ausência documental significa “não encontrado no material”, nunca falta de competência. Sem inferência de fatos; perguntar, omitir ou marcar para confirmação.
 - Não registrar prompt, resposta, texto extraído ou identificadores diretos no Sentry nem nos logs. Desativar captura de bodies/headers sensíveis e aplicar allowlist de metadados técnicos.
 
+### Geração Gemini implementada localmente
+
+- `POST /api/resumes/optimize` revalida claims e `profiles.plan/pro_expires_at` em cada chamada com Supabase SSR, usando `isProActive`; profile ausente/vencido e Free recebem 403. Não consulta `payments` nem usa service role.
+- A geração requer confirmação explícita separada na UI e cabeçalho `x-resume-gemini-consent: true`. Ele não substitui a autorização Pro e não é persistido. O corpo aceita somente texto extraído, área e cargo.
+- Antes do envio, o servidor remove nome reconhecido em primeira linha ou label, e-mail, telefone, links, identificador pessoal e linhas rotuladas de endereço/localização. Não envia arquivo, diagnóstico, dados pessoais ou draft completo.
+- A resposta cumpre JSON Schema, limites do editor e evidências literais; empresas, cargos, datas, tecnologias, instituição, idioma, certificação e links são verificados contra a evidência. Schema/evidência literal não provam equivalência semântica: a proposta exige revisão humana; anchors factuais sem suporte rejeitam toda a resposta.
+- `GEMINI_API_KEY` e `GEMINI_MODEL` são usados somente server-side. As variáveis ainda precisam ser configuradas na Vercel Production; deploy não realizado. Antes de produção, confirmar duração efetiva da Function e limites/cotas Gemini e definir rate limit/orçamento para chamadas pagas.
+
 ## PDF gerado
 
 No MVP, a exportação usa `window.print()` no navegador e CSS de impressão sobre a prévia HTML; o usuário escolhe “Salvar como PDF”. O currículo não é enviado a servidor ou serviço externo para gerar o arquivo. A prévia continua usando conteúdo React escapado como texto, sem canvas ou HTML arbitrário. Se geração server-side for aprovada futuramente, revisar isolamento, rede, credenciais, limites de páginas/tempo e limpeza de temporários antes de implementá-la.
@@ -68,7 +76,7 @@ No MVP, a exportação usa `window.print()` no navegador e CSS de impressão sob
 
 ## Pendências de produção
 
-Decidir mercado/base legal, aviso de privacidade, contratos e regiões dos operadores, retenção por tipo de dado, direitos de exclusão e contingência de backups. Fazer teste de acesso cruzado entre usuários para Storage, tabelas e resultados. Registrar limites de upload e uso/custo por usuário. O responsável deve aprovar o fluxo de dados para OpenAI e as condições da Vercel/Supabase antes de receber currículos reais.
+Definir base legal, aviso de privacidade, contratos e regiões dos operadores, retenção por tipo de dado, direitos de exclusão e contingência de backups. Fazer teste de acesso cruzado entre usuários para Storage, tabelas e resultados. Registrar limites de upload e uso/custo por usuário. O responsável confirmou o uso Paid Services no projeto Gemini; configurar a chave/modelo na Vercel e revisar o texto de privacidade antes de receber currículos reais. Verificar as condições de duração da Vercel/Supabase.
 
 Para Auth em produção, configurar domínio/Site URL, redirects permitidos por ambiente, SMTP confiável para confirmação, política de senha e proteção contra abuso/tentativas. A implementação atual não cria banco de currículo nem políticas de Storage. Antes de habilitar checkout, configurar credenciais de teste no servidor, Webhook Secret obtida no painel oficial, service role server-side, evento de pagamento e URL pública HTTPS; aplicar a migration de RPC somente após revisão do dry-run e autorização explícita.
 

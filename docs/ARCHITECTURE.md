@@ -2,7 +2,7 @@
 
 ## Estado
 
-A aplicação Next.js já implementa landing page, upload/extração temporária, análise demonstrativa, editor em memória e exportação local por impressão. Supabase Auth foi integrado para cadastro/login por e-mail e senha. Segundo o responsável, a base `profiles`/`payments` foi aplicada e validada no Supabase remoto em 2026-09-29; não foi reconsultada nesta etapa. Checkout/webhook Mercado Pago e uma RPC/migration aditiva foram implementados localmente, mas a nova migration ainda não foi aplicada ao remoto. Persistência de currículos, IA real e deploy continuam fora da implementação atual.
+A aplicação implementa landing page, upload/extração temporária, análise demonstrativa, geração de currículo otimizado com Gemini para Pro ativo, editor em memória e exportação local por impressão. Supabase Auth foi integrado para cadastro/login por e-mail e senha. Segundo o responsável, as migrations profiles/payments e Mercado Pago foram aplicadas e validadas remotamente; não foram reconsultadas nesta etapa. Currículos e resultados não são persistidos. A geração Gemini está implementada localmente, sem chamada real nesta etapa e sem deploy.
 
 ## Stack escolhida
 
@@ -15,7 +15,7 @@ A aplicação Next.js já implementa landing page, upload/extração temporária
 | Autenticação | Supabase Auth com e-mail/senha; `@supabase/ssr`, cookies e verificação de claims no servidor/proxy | Usa o projeto Supabase já previsto, mantém sessão em cookies geridos pelo SDK e evita autenticação própria. A aplicação não armazena senhas. | Magic link mudaria o fluxo solicitado; Clerk/Auth0 adicionariam fornecedor; auth própria elevaria risco e manutenção. |
 | Arquivos de currículo | Bucket privado no Supabase Storage; upload direto do cliente com sessão autenticada e políticas RLS por usuário; processamento autorizado no servidor; URLs assinadas curtas somente quando necessárias | Mantém documentos fora do diretório público e evita o limite de 4,5 MB do body das Vercel Functions. | Fazer proxy de cada upload via Route Handler falha para arquivos acima de 4,5 MB; serviço S3 separado adiciona conta e políticas sem necessidade comprovada. |
 | Extração PDF/DOCX | Node.js server runtime; `pdf-parse` para PDF textual e `mammoth` para DOCX; limitar tamanho/páginas e rejeitar formatos não suportados | Bibliotecas focadas mantêm processamento local no servidor e evitam enviar o original a um extrator externo. | OCR/Tesseract e serviços de parsing aumentam custo, superfície e falsos resultados; imagem/scans ficam fora do primeiro escopo e devem ser explicados ao usuário. |
-| IA | OpenAI Responses API, manter `gpt-4.1-mini` como candidato configurável, saída JSON Schema e avaliação offline antes de produção | Custo/qualidade não podem ser inferidos apenas do rótulo mini; a escolha fica provisória até benchmark anonimizado, revisão factual e verificação atual de preço/retention. | Trocar por outro modelo sem comparação cria risco equivalente; modelo local e camada multi-provedor acrescentariam operação sem requisito. |
+| IA | Análise/diagnóstico permanece no provider demo selecionado; geração de currículo usa SDK oficial `@google/genai`, `GEMINI_MODEL` server-side e Structured Outputs com validação Zod/evidências | Mantém os usos separados. Gemini só é invocado no servidor, após consentimento e revalidação de Pro ativo; dados pessoais diretos são extraídos localmente/redigidos antes do envio. | OpenAI e provider multi-modelo não são necessários para a geração; manter o diagnóstico no provider atual evita misturar escopos. |
 | PDF final no MVP | HTML semântico da prévia, impresso pelo navegador com CSS `@media print`/`@page` A4; a pessoa escolhe “Salvar como PDF” | Reutiliza o currículo editado, mantém texto selecionável e não envia dados nem exige dependências ou renderização server-side. | Playwright/Chromium server-side e bibliotecas PDF adicionam runtime, custo e processamento de dados no servidor; só reconsiderar se houver requisito explícito de download direto ou exportação em lote. |
 | Pagamentos | Mercado Pago Checkout Pro via Preferences API, Next.js Route Handlers e RPC PostgreSQL transacional para idempotência | Preço fixo server-side de R$ 19,90 BRL por 30 dias avulsos; webhook assinado reconsulta o pagamento antes de gravar/conceder; `external_reference` inclui UUID do usuário assinado pelo servidor. | Orders API, assinatura recorrente e SDK adicional não são necessários neste fluxo. Reembolso/chargeback e autorização de conteúdo Pro permanecem decisões futuras. |
 | Deploy | Vercel para aplicação Next.js; Supabase gerenciado para Postgres/Auth/Storage | Caminho direto para preview e deploy da aplicação, com responsabilidades separadas entre execução web e dados. | VPS/Docker exigiria operação de runtime e deploy desde o início; outras plataformas permanecem viáveis se limites de execução para Chromium/arquivos não forem adequados. |
@@ -32,6 +32,7 @@ A aplicação Next.js já implementa landing page, upload/extração temporária
 │   ├── api/
 │   │   ├── documents/route.ts
 │   │   ├── analyses/route.ts
+│   │   ├── resumes/optimize/route.ts
 │   │   ├── exports/pdf/route.ts
 │   │   ├── checkout/route.ts
 │   │   └── webhooks/mercado-pago/route.ts
@@ -41,8 +42,8 @@ A aplicação Next.js já implementa landing page, upload/extração temporária
 ├── features/
 │   ├── documents/       # Upload, validação e extração
 │   ├── analysis/        # Contratos, evidências e integração de IA
-│   ├── resume/          # Edição e exportação do currículo
-│   └── billing/         # Helper local de validade Pro; sem autorização de recursos
+│   ├── resume/          # Edição, contratos, provider Gemini e exportação do currículo
+│   └── billing/         # Checkout, profile e autorização temporal de acesso Pro
 ├── lib/
 │   ├── supabase/        # Clientes browser/server e atualização de sessão no proxy
 │   ├── db/              # Cliente e consultas SQL
@@ -75,6 +76,12 @@ RLS está habilitado nas duas tabelas. O role `authenticated` tem somente `SELEC
 6. A pessoa revisa e edita o currículo final. No MVP, o navegador imprime localmente apenas a prévia do currículo e permite “Salvar como PDF”; nenhuma rota server-side gera o documento.
 7. Descrição de vaga e texto de LinkedIn só são incluídos por ação da pessoa; não usar scraping.
 
+### Geração Gemini de currículo otimizado
+
+O diagnóstico permanece no provider demo selecionado. Depois do diagnóstico, a geração é uma etapa separada, disponível somente a profile Pro ativo. O navegador envia ao `POST /api/resumes/optimize` apenas texto extraído, área e cargo e inclui um cabeçalho de consentimento afirmativo. O servidor revalida claims, consulta `profiles` pelo cliente Supabase SSR/RLS e usa `isProActive` antes de chamar Gemini. Não consulta `payments` nem usa service role.
+
+O provider server-side exige `GEMINI_API_KEY` e `GEMINI_MODEL`, recebe texto com identificadores diretos redigidos, usa JSON Schema estruturado, timeout sem retry e valida evidências/campos factuais antes de criar IDs e entregar `ResumeDraft`. Dados pessoais necessários no rascunho são extraídos localmente do texto original e nunca entram no prompt. O resultado fica no contexto React em memória e se perde ao atualizar/sair; prompt, resposta e currículo não são registrados em logs.
+
 ## Persistência e retenção propostas
 
 Como o diagnóstico e o currículo otimizado precisam de revisão e retomada, a proposta assume conta autenticada e persistência mínima de metadados, texto extraído, resultado e versão editada. Original em bucket privado. Exclusão de documento deve remover o objeto pela API Storage e seus dados associados (texto, análises, versão editada e referências), com operação idempotente; apagar somente metadados não remove o objeto físico. A proposta anterior de 30 dias cobre apenas o original e não é uma política completa ou aprovada. Definir prazos separados para cada dado, backups e logs antes de produção; retenção indefinida é proibida.
@@ -106,6 +113,8 @@ Como o diagnóstico e o currículo otimizado precisam de revisão e retomada, a 
 | `SUPABASE_SERVICE_ROLE_KEY` | Operações privilegiadas restritas a servidor, se realmente necessárias | Segredo; evitar uso em rotas comuns |
 | `OPENAI_API_KEY` | Responses API | Segredo |
 | `OPENAI_MODEL` | Modelo selecionado/configurável | Servidor |
+| `GEMINI_API_KEY` | Chave oficial usada pelo provider server-side de geração | Segredo; nunca `NEXT_PUBLIC_` |
+| `GEMINI_MODEL` | Modelo de geração configurado; exemplo `gemini-3.8-flash`, obrigatório sem fallback runtime | Server-side |
 | `MERCADO_PAGO_ACCESS_TOKEN` | Criar preferência e consultar pagamento na API Mercado Pago | Segredo server-side |
 | `MERCADO_PAGO_WEBHOOK_SECRET` | Validar HMAC `x-signature` da aplicação MP | Segredo server-side; deve ser gerado no painel de Webhooks |
 | `MERCADO_PAGO_MODE` | Selecionar URL sandbox/live; usar credenciais de teste ou produção correspondentes no servidor | Server-side: `test` ou `production`; não comparar com `payment.live_mode` da resposta |

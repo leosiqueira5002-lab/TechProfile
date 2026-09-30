@@ -7,6 +7,7 @@ type ResumeDraftContextValue = {
   draft: ResumeDraft | null;
   setDraft: (draft: ResumeDraft | null) => void;
   canExportPdf: boolean;
+  canGenerateResume: boolean;
 };
 
 const ResumeDraftContext = createContext<ResumeDraftContextValue | null>(null);
@@ -14,12 +15,14 @@ const ResumeDraftContext = createContext<ResumeDraftContextValue | null>(null);
 export function ResumeDraftProvider({
   children,
   canExportPdf,
+  canGenerateResume,
 }: {
   children: ReactNode;
   canExportPdf: boolean;
+  canGenerateResume: boolean;
 }) {
   const [draft, setDraft] = useState<ResumeDraft | null>(null);
-  return <ResumeDraftContext.Provider value={{ draft, setDraft, canExportPdf }}>{children}</ResumeDraftContext.Provider>;
+  return <ResumeDraftContext.Provider value={{ draft, setDraft, canExportPdf, canGenerateResume }}>{children}</ResumeDraftContext.Provider>;
 }
 
 export function useResumeDraftContext(): ResumeDraftContextValue {

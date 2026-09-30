@@ -10,6 +10,7 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 - [x] Implementar e validar a landing page da Fase 1.
 - [x] Implementar e validar upload e extração local de currículo da Fase 2.
 - [x] Corrigir carregamento server-side de `pdf-parse` na Vercel com a `CanvasFactory` oficial do worker.
+- [ ] Revisar e aprovar a especificação/plano de otimização de currículo com Gemini em `docs/superpowers/`; execução ainda não autorizada.
 - [x] Completar estados de documento carregado, substituição e contrato estruturado para preparar a Fase 3.
 - [x] Redesenhar visualmente landing, página `/analise`, cabeçalho, marca e placeholder `/entrar` com identidade clara azul, preservando o fluxo de upload.
 - [x] Implementar fluxo de diagnóstico demonstrativo determinístico com contrato comum de provedores e sem chamadas externas (Fase 3 — modo demo).
@@ -479,3 +480,27 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Decision Log:** reaproveitar `ResumeDraftProvider` e `SubscribeProButton`; manter a assinatura de impressão na UI client-side, mas protegida pelo valor de acesso calculado no servidor e pela regra de conteúdo não vazio.
 
 **Outcomes & Retrospective:** o gate foi adicionado sem alterar a rota de checkout ou a arquitetura de pagamentos. A impressão local é controlada pela UI com valor de acesso derivado server-side; não há proteção de arquivo no servidor, pois o PDF é produzido pelo navegador.
+
+## Otimização de currículo com Gemini
+
+**Objetivo:** gerar para usuários Pro uma proposta editável de `ResumeDraft` usando somente o texto extraído, a área e o cargo, sem persistência.
+
+**Especificação:** `docs/superpowers/specs/2026-09-30-gemini-resume-optimization-design.md`.
+
+**Plano:** `docs/superpowers/plans/2026-09-30-gemini-resume-optimization.md`.
+
+**Estado:** especificação e plano aprovados; implementação local concluída em 2026-09-30. Sem chamada real ao Gemini e sem deploy.
+
+**Surprises & Discoveries:** a sessão autenticada, consulta server-side de profile, helper `isProActive`, redator de PII, limites do texto e contexto React do currículo já existem. A análise ativa e a geração de currículo são operações separadas; Gemini não substituirá o provider de diagnóstico. Documentação oficial consultada em 2026-09-30 informa que conteúdo do Free Tier pode ser usado para melhoria de produtos e revisado por humanos, enquanto o Paid Service não usa prompts/respostas para melhoria, mas ainda pode manter registros limitados de abuso/segurança.
+
+**Decision Log:** usar SDK oficial `@google/genai` 2.24.0, `models.generateContent` com Structured Outputs e `GEMINI_MODEL=gemini-3.8-flash` somente como exemplo configurado; runtime exige o modelo e a chave sem fallback. O responsável confirmou Paid Services. Consentimento separado é exigido na UI e marcado pelo header `x-resume-gemini-consent: true`; esse marcador não concede autorização, que é decidida no servidor. Decisão de arquitetura: reutilizar Supabase SSR/RLS + `isProActive`, redigir identificadores antes do envio, validar fatos/evidências e entregar draft somente em memória.
+
+**Progress:** contrato compartilhado, provider Gemini, rota autenticada Pro-only, CTA separado pós-análise, handoff para `/curriculo`, configuração `.env.example` e documentação foram implementados. Adicionada dependência oficial `@google/genai` 2.24.0. Nenhuma chave foi adicionada ao código/repositório e nenhuma chamada real foi realizada. Lint, typecheck, build, 150/150 testes Node e `git diff --check` passaram; ESLint adicional nos arquivos alterados também passou sem avisos.
+
+**Surprises & Discoveries:** a função de redação existente não cobria nome rotulado nem Cidade/Estado; o provider de otimização agora remove essas linhas além de contatos, URLs, identificadores pessoais e telefone. A consulta de profile existente usa chave `user_id`; a rota segue o mesmo identificador e passa pelo RLS da sessão. O SDK estruturado recebe schema Draft-7; resposta factual sem evidência confiável é rejeitada integralmente.
+
+**Outcomes & Retrospective:** integração concluída localmente sem deploy, pagamento ou processamento real. A suíte validou contracts, redaction, Pro, consentimento, errors, timeout e handoff. Evidências e anchors factuais reduzem alucinação, mas não garantem equivalência semântica de toda paráfrase; revisão humana permanece necessária. O lançamento ainda depende de configuração Gemini, confirmação de duração Vercel, cotas/rate limit e revisão da política de privacidade.
+
+**Limitações e próximo marco:** `GEMINI_API_KEY` e `GEMINI_MODEL` precisam ser definidas na Vercel Production; o valor da chave não foi consultado. Confirmar `maxDuration` suportado pelo plano e aplicar rate limiting/orçamento antes de abrir o endpoint amplamente. Fazer deploy e teste com conta Pro só em etapa autorizada própria.
+
+**Validação manual pendente:** a inspeção do navegador local foi bloqueada pela política do navegador integrado para `http://localhost:3000/analise`. Nenhum contorno ou chamada externa foi tentado. A UI tem testes de contrato/render estrutural e o build incluiu a rota, mas ainda falta inspeção visual autenticada desktop/mobile.

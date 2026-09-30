@@ -4,7 +4,7 @@ TechProfile AI é um produto planejado para ajudar profissionais de tecnologia a
 
 ## Estado do repositório
 
-Aplicação Next.js App Router com TypeScript e interface responsiva. O fluxo atual inclui upload/extração temporária de currículo, análise demonstrativa, editor de currículo em memória, exportação por impressão local e autenticação Supabase por e-mail/senha. Não há banco de currículos, pagamento, análise real por IA ou deploy configurado.
+Aplicação Next.js App Router com TypeScript e interface responsiva. O fluxo inclui upload/extração temporária, análise demonstrativa, geração server-side de proposta de currículo com Gemini para Pro ativo, editor em memória, exportação por impressão, Supabase Auth e integração Mercado Pago. Currículos e rascunhos não são persistidos. A geração Gemini requer `GEMINI_API_KEY` e `GEMINI_MODEL` configurados no servidor; não houve chamada real ou deploy nesta implementação.
 
 ## Documentação
 
@@ -31,5 +31,7 @@ npm run dev
 ```
 
 Configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no `.env.local` para habilitar cadastro, login e acesso às rotas `/analise` e `/curriculo`. O `.env.example` documenta os nomes das variáveis sem credenciais. Para callbacks de confirmação, configure no painel Supabase a Site URL e allowlist local/de produção conforme `docs/SECURITY.md`.
+
+Para gerar uma proposta de currículo, configure `GEMINI_API_KEY` e `GEMINI_MODEL` no ambiente server-side. Use um projeto Gemini API com Paid Services ativo. A interface pede consentimento separado e remove identificadores diretos antes do envio. Revise `docs/AI_RULES.md` e `docs/SECURITY.md` antes de liberar o recurso.
 
 Lint, typecheck e build: `npm run lint`, `npm run typecheck` e `npm run build`. Testes Node: `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --test tests/*.test.mjs`.

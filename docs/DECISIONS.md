@@ -1,6 +1,6 @@
 # Decisões, auditoria e aprovações
 
-Registre escolhas e questões em aberto. A arquitetura é proposta, não serviço configurado. Classificação da auditoria: **OK** = coerente/documentado; **ATENÇÃO** = viável com condição ou risco mitigável; **BLOQUEADOR** = não iniciar a funcionalidade afetada até resolver o ponto.
+Registre escolhas e questões em aberto. As linhas da auditoria mostram o estado em que cada decisão foi tomada; serviços e credenciais só estão configurados quando explicitamente registrado. Classificação: **OK** = coerente/documentado; **ATENÇÃO** = viável com condição ou risco mitigável; **BLOQUEADOR** = não iniciar a funcionalidade afetada até resolver o ponto.
 
 ## Auditoria técnica
 
@@ -30,7 +30,7 @@ Registre escolhas e questões em aberto. A arquitetura é proposta, não serviç
 |---|---|---|---|
 | 2026-09-23 | Stack | Next.js App Router, TypeScript, React, Route Handlers, Supabase Postgres/Auth/Storage, OpenAI API, impressão local, Vercel e Sentry propostos. | Proposta em evolução; IA, deploy e Sentry não configurados. |
 | 2026-09-23 | Upload | Cliente envia diretamente ao bucket privado autenticado; evitar limite 4,5 MB da Vercel Function. | Correção documental recomendada; validar fluxo na implementação. |
-| 2026-09-23 | IA | `gpt-4.1-mini` permanece como modelo candidato e configurável até benchmark. | Sem aprovação final de fornecedor/retention. |
+| 2026-09-23 | IA | `gpt-4.1-mini` era um candidato para diagnóstico futuro; o provider diagnóstico permanece demo. A geração de currículo usa decisão separada de Gemini registrada em 2026-09-30. | OpenAI não é chamada pela otimização Gemini. |
 | 2026-09-23 | Retenção | Persistência mínima prevista; prazos por categoria e exclusão completa devem ser aprovados. | Retenção de 30 dias para original era apenas proposta parcial. |
 | 2026-09-23 | Factualidade | Não inventar fatos e tratar lacuna como ausência no material; evidência e revisão humana obrigatórias. | Requisito do produto. |
 | 2026-09-26 | Exportação do currículo | Usar `window.print()` e `@media print`/`@page` A4 para imprimir somente a prévia HTML e permitir “Salvar como PDF”; desabilitar o botão sem conteúdo. | Aprovada para o MVP; local no navegador, sem dependências, chamadas ou persistência. |
@@ -39,6 +39,7 @@ Registre escolhas e questões em aberto. A arquitetura é proposta, não serviç
 | 2026-09-29 | Mercado Pago Checkout Pro | Pagamento avulso R$ 19,90 BRL por 30 dias, Preferences API existente, Access Token apenas server-side, webhook assinado e RPC de concessão idempotente. | Implementado localmente em modo de teste. Migration aditiva criada; dry-run propôs somente esta migration. Sem aplicação remota ou deploy. |
 | 2026-09-29 | Validação do ambiente de pagamento | O modo `test`/`production` é configuração server-side e deve acompanhar as credenciais correspondentes; não bloquear por divergência com `payment.live_mode` retornado pela consulta do pagamento, pois não foi encontrada exigência documental de igualdade no Checkout Pro Preferences e o campo divergiu em testes sandbox. Todas as demais validações do pagamento e a RPC idempotente permanecem obrigatórias. | Aplicado ao handler; sem alterações de credenciais, dados ou deploy. |
 | 2026-09-29 | Referência externa do checkout | Assinar UUID do usuário no `external_reference` com HMAC-SHA256 e `MERCADO_PAGO_WEBHOOK_SECRET`, separando o manifesto por domínio; não usar UUID simples como prova de associação. | Ajuste de segurança durante implementação: teste demonstrou que UUID válido de outra conta não poderia ser distinguido sem vínculo autenticado. Sem tabela nova/credencial extra; checkout aguarda configuração da secret oficial. |
+| 2026-09-30 | Geração de currículo com Gemini | Usar `@google/genai` e `GEMINI_MODEL=gemini-3.8-flash` como valor configurável; Structured Outputs com validação Zod/evidências; somente Pro ativo, sessão Supabase SSR, consentimento separado e estado em memória. O responsável confirmou Paid Services. | Implementada localmente; testes usam cliente falso. Nenhuma chamada real ou deployment. Antes de Production: configurar variáveis Gemini, confirmar duração Vercel e estabelecer cotas/rate limiting e governança de privacidade. |
 
 ## Aprovações necessárias antes da implementação afetada
 
