@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 const baseUrl = process.env.RESUME_TEST_URL ?? "http://localhost:3000";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -33,6 +33,22 @@ function makePdf(pageCount = 1, text = "Synthetic resume experience") {
   pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
   return Buffer.from(pdf);
 }
+
+test("PDF extractor initializes its server runtime and returns extracted text and page count", async () => {
+  const response = await sendFile("runtime.pdf", "application/pdf", makePdf(2));
+  assert.equal(response.status, 200, (await response.clone().json()).error);
+  const { document } = await response.json();
+
+  assert.match(document.extractedText, /Synthetic resume experience page 1/);
+  assert.equal(document.pageCount, 2);
+});
+
+test("PDF extractor uses pdf-parse documented server CanvasFactory configuration", async () => {
+  const source = await readFile(new URL("../features/documents/extract.ts", import.meta.url), "utf8");
+
+  assert.match(source, /import\s+\{\s*CanvasFactory\s*\}\s+from\s+["']pdf-parse\/worker["']/);
+  assert.match(source, /new\s+PDFParse\(\{\s*data:\s*buffer,\s*CanvasFactory\s*\}\)/);
+});
 
 function crc32(buffer) {
   let crc = 0xffffffff;

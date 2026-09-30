@@ -9,6 +9,7 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 - [x] Selecionar proposta de stack para MVP e registrar alternativas em `docs/ARCHITECTURE.md` e `docs/DECISIONS.md`.
 - [x] Implementar e validar a landing page da Fase 1.
 - [x] Implementar e validar upload e extração local de currículo da Fase 2.
+- [x] Corrigir carregamento server-side de `pdf-parse` na Vercel com a `CanvasFactory` oficial do worker.
 - [x] Completar estados de documento carregado, substituição e contrato estruturado para preparar a Fase 3.
 - [x] Redesenhar visualmente landing, página `/analise`, cabeçalho, marca e placeholder `/entrar` com identidade clara azul, preservando o fluxo de upload.
 - [x] Implementar fluxo de diagnóstico demonstrativo determinístico com contrato comum de provedores e sem chamadas externas (Fase 3 — modo demo).
@@ -75,6 +76,14 @@ Documento vivo. Atualize o progresso, descobertas, decisões e retrospectiva dur
 **Limitações:** Supabase não está configurado e não foi testado contra um projeto real; são necessárias `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `SUPABASE_RESUME_BUCKET`, além de Auth, bucket privado e políticas Storage/RLS corretas. A rota exige JWT válido quando o armazenamento está configurado e confirma que o bucket não é público; a tela ainda não encaminha JWT porque login real está fora desta fase. Portanto, aqui o documento estruturado e o texto extraído existem somente na memória da tela e se perdem ao recarregar/sair; o original não persiste sem sessão e configuração. Não há persistência de metadados/texto em banco, OCR, antivírus nem limite de uso por usuário.
 
 **Riscos restantes:** parser PDF/DOCX executa no processo web; limites e timeout reduzem exposição, mas não equivalem a isolamento de processo/limite de memória. A rota de upload ainda precisa de autenticação, rate limit e validação de políticas do bucket antes de processar currículos reais em produção.
+
+### Compatibilidade do parser PDF no runtime serverless
+
+**Descoberta:** o Runtime Log Production confirmou `ReferenceError: DOMMatrix is not defined` ao carregar o módulo externo `pdf-parse` v2.4.5. A documentação oficial atual da biblioteca recomenda importar `CanvasFactory` de `pdf-parse/worker` antes de `pdf-parse` e passar a factory ao construtor. O projeto já externalizava `pdf-parse` e `@napi-rs/canvas` no Next.js.
+
+**Correção:** importar a `CanvasFactory` oficial antes de `PDFParse` e fornecê-la na criação do parser. Mantidos `getInfo`, texto por página, validação até 20 páginas, timeout de 15 segundos, extração DOCX e o mapeamento atual de erros. Sem polyfill próprio nem alteração de dependências.
+
+**Validação:** teste novo verifica a configuração documentada e a extração de texto/page count. A suíte cobre PDF inválido com erro controlado, limite de páginas e DOCX inalterado. `npm run lint`, `npm run typecheck`, `npm run build`, suíte Node completa (`127/127`) e `git diff --check` passaram. O teste local usa a rota Next server-side; a execução específica no runtime gerenciado da Vercel requer novo deploy e não foi realizada nesta etapa.
 
 **Próximo marco sugerido à época:** Fase 3 — definir área/cargo desejado, contrato do diagnóstico e mensagens factuais. Esse marco foi concluído posteriormente; ver o registro de implementação abaixo.
 

@@ -1,4 +1,5 @@
 import { extractRawText } from "mammoth";
+import { CanvasFactory } from "pdf-parse/worker";
 import { PasswordException, PDFParse } from "pdf-parse";
 import { ResumeProcessingError } from "./errors";
 import {
@@ -41,7 +42,7 @@ export function normalizeResumeText(value: string): string {
 }
 
 async function extractPdfText(buffer: Buffer): Promise<{ text: string; pageCount: number }> {
-  const parser = new PDFParse({ data: buffer });
+  const parser = new PDFParse({ data: buffer, CanvasFactory });
   try {
     const info = await withTimeout(parser.getInfo(), EXTRACTION_TIMEOUT_MS);
     if (info.total > MAX_PDF_PAGES) throw new ResumeProcessingError("TOO_MANY_PAGES");
