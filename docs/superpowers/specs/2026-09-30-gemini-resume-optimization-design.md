@@ -1,6 +1,6 @@
 # Especificação — currículo otimizado com Gemini
 
-**Estado:** aprovada para implementação; implementação local concluída em 2026-09-30, sem chamada real ao Gemini ou deploy.
+**Estado:** aprovada e implementada localmente em 2026-09-30. Um probe diagnóstico isolado local (“Responda OK”, sem currículo) recebeu HTTP 503; nenhum currículo real foi enviado e não houve deploy.
 
 ## Objetivo
 

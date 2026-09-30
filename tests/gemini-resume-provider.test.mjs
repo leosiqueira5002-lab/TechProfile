@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { ApiError } from "@google/genai";
 import { optimizeWithGemini, GeminiResumeError } from "../features/resume/providers/gemini.ts";
 import { RESUME_OPTIMIZATION_SYSTEM_INSTRUCTION } from "../features/resume/optimization-prompt.ts";
 
@@ -56,4 +57,84 @@ test("maps provider failure and timeout without exposing raw errors", async () =
     model: "gemini-test", timeoutMs: 5, client: { models: { generateContent: () => new Promise(() => {}) } },
   }), (error) => error instanceof GeminiResumeError && error.kind === "timeout");
   assert.match(RESUME_OPTIMIZATION_SYSTEM_INSTRUCTION, /Nunca invente/i);
+});
+
+test("logs safe Gemini HTTP diagnostics without logging raw errors, keys, or resume data", async () => {
+  const input = { extractedText: source, area: "Full Stack", role: "Developer" };
+  const records = [];
+  const originalError = console.error;
+  console.error = (...args) => records.push(args.join(" "));
+  try {
+    await assert.rejects(optimizeWithGemini(input, {
+      apiKey: "test-secret-key",
+      model: "gemini-3.8-flash",
+      client: { models: { generateContent: async () => {
+        throw new ApiError({
+          message: 'got status: UNAVAILABLE. {"error":{"code":503,"message":"raw Google payload test-secret-key ana@example.com"}} ' + source,
+          status: 503,
+        });
+      } } },
+    }), (error) => error instanceof GeminiResumeError && error.kind === "unavailable");
+  } finally {
+    console.error = originalError;
+  }
+
+  assert.equal(records.length, 1);
+  const log = records[0];
+  assert.match(log, /gemini_request/);
+  assert.match(log, /gemini-3\.8-flash/);
+  assert.match(log, /503/);
+  assert.match(log, /UNAVAILABLE/);
+  assert.doesNotMatch(log, /test-secret-key|ana@example\.com|Trabalhei como Desenvolvedora|raw Google payload/);
+});
+
+test("logs structured-output failures at the structured_output stage with safe summaries", async () => {
+  const records = [];
+  const originalError = console.error;
+  console.error = (...args) => records.push(args.join(" "));
+  try {
+    await assert.rejects(optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+      model: "gemini-3.8-flash",
+      client: fakeClient({ ...candidate, unsafeModelPayload: "private-response-fragment" }),
+    }), (error) => error instanceof GeminiResumeError && error.kind === "invalid_response");
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(records.length, 1);
+  assert.match(records[0], /structured_output/);
+  assert.match(records[0], /gemini-3\.8-flash/);
+  assert.doesNotMatch(records[0], /private-response-fragment|Trabalhei como Desenvolvedora|ana@example\.com/);
+});
+
+test("categorizes Gemini HTTP failures without preserving vendor messages", async () => {
+  const cases = [
+    [400, "INVALID_ARGUMENT", "bad_request_or_schema"],
+    [401, "UNAUTHENTICATED", "authentication_rejected"],
+    [403, "PERMISSION_DENIED", "permission_or_project_restriction"],
+    [404, "NOT_FOUND", "model_or_endpoint_not_found"],
+    [429, "RESOURCE_EXHAUSTED", "quota_or_rate_limit"],
+    [503, "UNAVAILABLE", "google_service_error"],
+  ];
+  const records = [];
+  const originalError = console.error;
+  console.error = (...args) => records.push(args.join(" "));
+  try {
+    for (const [status, code] of cases) {
+      await assert.rejects(optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+        model: "gemini-3.8-flash",
+        client: { models: { generateContent: async () => {
+          throw new ApiError({ message: `got status: ${code}. {"error":{"message":"private error payload"}}`, status });
+        } } },
+      }), (error) => error instanceof GeminiResumeError && error.kind === "unavailable");
+    }
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(records.length, cases.length);
+  for (let index = 0; index < cases.length; index += 1) {
+    assert.match(records[index], new RegExp(`"httpStatus":${cases[index][0]}`));
+    assert.match(records[index], new RegExp(`"code":"${cases[index][1]}"`));
+    assert.match(records[index], new RegExp(`"category":"${cases[index][2]}"`));
+    assert.doesNotMatch(records[index], /private error payload/);
+  }
 });
