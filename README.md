@@ -4,7 +4,7 @@ TechProfile AI é um produto planejado para ajudar profissionais de tecnologia a
 
 ## Estado do repositório
 
-Aplicação Next.js App Router com TypeScript e interface responsiva. O fluxo inclui upload/extração temporária, análise demonstrativa, geração server-side de proposta de currículo com Gemini para Pro ativo, editor em memória, exportação por impressão, Supabase Auth e integração Mercado Pago. Currículos e rascunhos não são persistidos. A geração Gemini requer `GEMINI_API_KEY` e `GEMINI_MODEL` configurados no servidor; foi feito apenas um probe local com o texto “Responda OK” (sem currículo), que recebeu HTTP 503. Nenhum currículo real foi enviado e não houve deploy.
+Aplicação Next.js App Router com TypeScript e interface responsiva. O fluxo inclui upload/extração temporária, análise demonstrativa, geração server-side de proposta de currículo com Gemini para Pro ativo, editor em memória, exportação por impressão, Supabase Auth e integração Mercado Pago. Currículos e rascunhos não são persistidos. A geração Gemini requer `GEMINI_API_KEY` e `GEMINI_MODEL` configurados no servidor; probes locais usaram apenas “Responda apenas OK”, sem currículo: sem structured output passou e com schema mínimo retornou HTTP 503 por alta demanda. Nenhum currículo real foi enviado e não houve deploy.
 
 ## Documentação
 

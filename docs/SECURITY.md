@@ -1,6 +1,6 @@
 # Segurança e privacidade
 
-Este documento descreve controles existentes e pendências. A geração Gemini foi implementada localmente para profile Pro ativo. Em 2026-09-30, um probe isolado local com “Responda OK” (sem currículo) recebeu HTTP 503; nenhum currículo real foi enviado e não houve deployment.
+Este documento descreve controles existentes e pendências. A geração Gemini foi implementada localmente para profile Pro ativo. Em 2026-09-30, probes locais usaram apenas “Responda apenas OK”, sem currículo: sem structured output passou e o probe com schema mínimo recebeu HTTP 503 por alta demanda. Nenhum currículo real foi enviado e não houve deployment.
 
 ## Dados e minimização
 

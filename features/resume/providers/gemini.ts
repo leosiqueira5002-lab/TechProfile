@@ -71,7 +71,7 @@ export async function optimizeWithGemini(inputValue: unknown, options: GenerateO
         contents: createResumeOptimizationContents({ ...parsedInput.data, extractedText: redactedSource }),
         config: {
           responseMimeType: "application/json",
-          responseSchema: GEMINI_RESUME_RESPONSE_SCHEMA,
+          responseJsonSchema: GEMINI_RESUME_RESPONSE_SCHEMA,
           systemInstruction: RESUME_OPTIMIZATION_SYSTEM_INSTRUCTION,
           abortSignal: abortController.signal,
         },

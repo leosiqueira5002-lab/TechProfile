@@ -65,7 +65,7 @@
 - [x] Add mocked SDK tests for correct model selection, JSON MIME/schema options, redacted text only, prompt instructions, absent `GEMINI_API_KEY`/`GEMINI_MODEL`, empty/malformed/blocked response, provider error and timeout.
 - [x] Run the focused tests; ensure they fail before adding the adapter.
 - [x] Add the current official `@google/genai` package as a production dependency; no legacy `@google/generative-ai` package and no new schema dependency (Zod already exists).
-- [x] Implement the adapter with `GoogleGenAI`, `models.generateContent`, `GEMINI_API_KEY`, required `GEMINI_MODEL`, fixed system instruction, `responseMimeType: "application/json"`, and the candidate JSON Schema; parse and validate the complete response before returning.
+- [x] Implement the adapter with `GoogleGenAI`, `models.generateContent`, `GEMINI_API_KEY`, required `GEMINI_MODEL`, fixed system instruction and structured JSON output; parse and validate the complete response before returning.
 - [x] Re-run provider tests with mocked SDK only. Do not call Gemini from automated tests.
 
 ### Task 3: Authenticated Pro-only API route

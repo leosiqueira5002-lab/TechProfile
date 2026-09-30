@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ApiError } from "@google/genai";
+import { GEMINI_RESUME_RESPONSE_SCHEMA } from "../features/resume/optimization-contract.ts";
 import { optimizeWithGemini, GeminiResumeError } from "../features/resume/providers/gemini.ts";
 import { RESUME_OPTIMIZATION_SYSTEM_INSTRUCTION } from "../features/resume/optimization-prompt.ts";
 
@@ -24,12 +25,33 @@ test("uses configured model, JSON schema, fixed safety prompt, and only redacted
   });
   assert.equal(request.model, "gemini-test-model");
   assert.equal(request.config.responseMimeType, "application/json");
-  assert.ok(request.config.responseSchema);
+  assert.deepEqual(request.config.responseJsonSchema, GEMINI_RESUME_RESPONSE_SCHEMA);
   assert.match(request.config.systemInstruction, /Projetos pessoais ou acadêmicos/);
   assert.doesNotMatch(request.contents, /ana@example\.com|Ana Silva/);
   assert.equal(draft.personalInfo.email, "ana@example.com");
   assert.equal(draft.experiences.length, 1);
   assert.equal(draft.projects.length, 1);
+});
+
+test("Gemini structured schema uses only supported keywords while Zod keeps server validation", () => {
+  const supported = new Set([
+    "$id", "$defs", "$ref", "$anchor",
+    "type", "format", "title", "description", "enum", "items", "prefixItems", "minItems", "maxItems",
+    "minimum", "maximum", "anyOf", "oneOf", "properties", "additionalProperties", "required",
+  ]);
+  const found = new Set();
+  const visit = (value, isPropertyMap = false) => {
+    if (!value || typeof value !== "object") return;
+    if (Array.isArray(value)) return value.forEach((entry) => visit(entry));
+    for (const [key, child] of Object.entries(value)) {
+      if (!isPropertyMap) found.add(key);
+      visit(child, key === "properties");
+    }
+  };
+  visit(GEMINI_RESUME_RESPONSE_SCHEMA);
+  assert.deepEqual([...found].filter((key) => !supported.has(key)), []);
+  assert.equal(GEMINI_RESUME_RESPONSE_SCHEMA.type, "object");
+  assert.ok(GEMINI_RESUME_RESPONSE_SCHEMA.properties.experiences);
 });
 
 test("fails closed when API key or model is missing", async () => {

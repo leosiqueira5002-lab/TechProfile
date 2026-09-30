@@ -2,7 +2,7 @@
 
 ## Estado
 
-A aplicação implementa landing page, upload/extração temporária, análise demonstrativa, geração de currículo otimizado com Gemini para Pro ativo, editor em memória e exportação local por impressão. Supabase Auth foi integrado para cadastro/login por e-mail e senha. Segundo o responsável, as migrations profiles/payments e Mercado Pago foram aplicadas e validadas remotamente; não foram reconsultadas nesta etapa. Currículos e resultados não são persistidos. A geração Gemini está implementada localmente, sem chamada real nesta etapa e sem deploy.
+A aplicação implementa landing page, upload/extração temporária, análise demonstrativa, geração de currículo otimizado com Gemini para Pro ativo, editor em memória e exportação local por impressão. Supabase Auth foi integrado para cadastro/login por e-mail e senha. Segundo o responsável, as migrations profiles/payments e Mercado Pago foram aplicadas e validadas remotamente; não foram reconsultadas nesta etapa. Currículos e resultados não são persistidos. Não houve envio de currículo real ao Gemini nem deploy. Foram feitos somente probes locais com prompt fictício; o probe sem structured output passou e o probe com schema mínimo recebeu HTTP 503 por alta demanda.
 
 ## Stack escolhida
 

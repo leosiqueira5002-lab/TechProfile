@@ -19,7 +19,7 @@ Fora do escopo: diagnóstico por Gemini (a análise atual permanece no modo conf
 - Manter Next.js App Router e criar `POST /api/resumes/optimize` em `app/api/resumes/optimize/route.ts`, Node runtime.
 - O handler valida sessão com `createClient()` + `auth.getClaims()`, lê `plan` e `pro_expires_at` do próprio profile via sessão Supabase, e autoriza somente com `isProActive(profile, new Date())`. Profile ausente, Free, expirado ou inválido recebe `403`; sessão ausente/inválida recebe `401`. Não usar `service_role` nem consultar `payments`.
 - Validar um body estrito contendo somente `extractedText`, `area` (enum `PROFESSIONAL_AREAS`) e `role`. Não aceitar `ResumeDraft`, user ID, preço, `isPro`, ou estado de análise como autoridade. Reusar `MAX_EXTRACTED_CHARACTERS` (200.000) e exigir ao menos 100 caracteres não brancos para geração; cargo 2–120 caracteres.
-- Manter a integração isolada em `features/resume/`: schema/validação da otimização, provider Gemini server-only e conversão final para `ResumeDraft`. Usar `@google/genai` com `GoogleGenAI` e `models.generateContent`, `responseMimeType: "application/json"` e `responseSchema` compatível com o subconjunto JSON Schema suportado. Não usar SDK antigo/depreciado nem misturar Gemini ao provider atual de diagnóstico.
+- Manter a integração isolada em `features/resume/`: schema/validação da otimização, provider Gemini server-only e conversão final para `ResumeDraft`. Usar `@google/genai` com `GoogleGenAI` e `models.generateContent`, definindo `responseMimeType: "application/json"` e `responseJsonSchema` com um JSON Schema manual limitado às keywords aceitas. Zod permanece autoridade de validação server-side. Não usar SDK antigo/depreciado nem misturar Gemini ao provider atual de diagnóstico.
 - O modelo indicado inicialmente no `.env.example` será `gemini-3.8-flash`, estável e com Structured Outputs segundo a documentação atual; runtime exige `GEMINI_MODEL` sem fallback silencioso. O valor pode ser alterado por ambiente sem código.
 - `GEMINI_API_KEY` e `GEMINI_MODEL` serão lidos somente em módulo/handler servidor. `GEMINI_API_KEY` nunca terá prefixo `NEXT_PUBLIC_`, nunca irá à resposta, bundle ou logs. Ausência de chave ou modelo falha fechada com erro seguro.
 
@@ -94,7 +94,7 @@ Logs, se necessários, aceitam somente etapa/categoria, resultado e status técn
 ## Referências oficiais consultadas em 2026-09-30
 
 - [Google GenAI SDK e Node.js](https://ai.google.dev/gemini-api/docs/get-started)
-- [GenerateContent API — JSON schema e `responseMimeType`/`responseSchema`](https://ai.google.dev/api/generate-content)
+- [GenerateContent API — `responseJsonSchema` com saída JSON estruturada](https://ai.google.dev/api/generate-content)
 - [Structured outputs: validação semântica permanece responsabilidade da aplicação](https://ai.google.dev/gemini-api/docs/generate-content/structured-output)
 - [Gemini 3.8 Flash — modelo estável e Structured Outputs](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash)
 - [Termos adicionais — uso de dados em serviços gratuitos e pagos](https://ai.google.dev/gemini-api/terms)

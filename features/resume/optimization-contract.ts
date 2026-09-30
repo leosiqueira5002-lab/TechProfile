@@ -95,7 +95,74 @@ export const ResumeDraftSchema = z.object({
 }).strict();
 
 export type GeminiResumeCandidate = z.infer<typeof GeminiResumeCandidateSchema>;
-export const GEMINI_RESUME_RESPONSE_SCHEMA = z.toJSONSchema(GeminiResumeCandidateSchema, { target: "draft-7" });
+
+type GeminiJsonSchema = {
+  type: "object" | "array" | "string" | "boolean";
+  properties?: Record<string, GeminiJsonSchema>;
+  required?: string[];
+  additionalProperties?: boolean;
+  items?: GeminiJsonSchema;
+  minItems?: number;
+  maxItems?: number;
+};
+
+const jsonString: GeminiJsonSchema = { type: "string" };
+const jsonBoolean: GeminiJsonSchema = { type: "boolean" };
+const jsonObject = (properties: Record<string, GeminiJsonSchema>): GeminiJsonSchema => ({
+  type: "object",
+  properties,
+  required: Object.keys(properties),
+  additionalProperties: false,
+});
+const jsonArray = (items: GeminiJsonSchema, maxItems: number, minItems?: number): GeminiJsonSchema => ({
+  type: "array",
+  items,
+  ...(minItems === undefined ? {} : { minItems }),
+  maxItems,
+});
+const sourceEvidenceSchema = jsonArray(jsonString, 8, 1);
+
+export const GEMINI_RESUME_RESPONSE_SCHEMA: GeminiJsonSchema = jsonObject({
+  summary: jsonString,
+  summaryEvidence: sourceEvidenceSchema,
+  experiences: jsonArray(jsonObject({
+    company: jsonString,
+    position: jsonString,
+    startDate: jsonString,
+    endDate: jsonString,
+    isCurrent: jsonBoolean,
+    description: jsonString,
+    sourceEvidence: sourceEvidenceSchema,
+  }), 20),
+  education: jsonArray(jsonObject({
+    institution: jsonString,
+    course: jsonString,
+    startDate: jsonString,
+    completionDate: jsonString,
+    status: jsonString,
+    sourceEvidence: sourceEvidenceSchema,
+  }), 20),
+  projects: jsonArray(jsonObject({
+    name: jsonString,
+    description: jsonString,
+    technologies: jsonString,
+    link: jsonString,
+    sourceEvidence: sourceEvidenceSchema,
+  }), 20),
+  skills: jsonArray(jsonObject({ name: jsonString, sourceEvidence: sourceEvidenceSchema }), 50),
+  languages: jsonArray(jsonObject({
+    name: jsonString,
+    proficiency: jsonString,
+    sourceEvidence: sourceEvidenceSchema,
+  }), 20),
+  certifications: jsonArray(jsonObject({
+    name: jsonString,
+    issuer: jsonString,
+    year: jsonString,
+    url: jsonString,
+    sourceEvidence: sourceEvidenceSchema,
+  }), 20),
+});
 
 function normalize(value: string): string {
   return value.normalize("NFKC").replace(/\s+/g, " ").trim().toLocaleLowerCase("pt-BR");
