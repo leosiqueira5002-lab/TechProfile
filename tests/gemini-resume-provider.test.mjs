@@ -96,18 +96,23 @@ test("logs safe Gemini HTTP diagnostics without logging raw errors, keys, or res
           status: 503,
         });
       } } },
+      sleep: async () => {},
     }), (error) => error instanceof GeminiResumeError && error.kind === "unavailable");
   } finally {
     console.error = originalError;
   }
 
-  assert.equal(records.length, 1);
-  const log = records[0];
-  assert.match(log, /gemini_request/);
-  assert.match(log, /gemini-3\.8-flash/);
-  assert.match(log, /503/);
-  assert.match(log, /UNAVAILABLE/);
-  assert.doesNotMatch(log, /test-secret-key|ana@example\.com|Trabalhei como Desenvolvedora|raw Google payload/);
+  assert.equal(records.length, 3);
+  for (const [index, log] of records.entries()) {
+    assert.match(log, /gemini_attempt/);
+    assert.match(log, /gemini-3\.8-flash/);
+    assert.match(log, /503/);
+    assert.match(log, /google_service_error/);
+    assert.match(log, new RegExp(`"attempt":${index + 1}`));
+    assert.match(log, new RegExp(`"willRetry":${index < 2}`));
+    assert.doesNotMatch(log, /"errorName"|"code"|"message"|"stage"/);
+    assert.doesNotMatch(log, /test-secret-key|ana@example\.com|Trabalhei como Desenvolvedora|raw Google payload/);
+  }
 });
 
 test("logs structured-output failures at the structured_output stage with safe summaries", async () => {
@@ -147,16 +152,187 @@ test("categorizes Gemini HTTP failures without preserving vendor messages", asyn
         client: { models: { generateContent: async () => {
           throw new ApiError({ message: `got status: ${code}. {"error":{"message":"private error payload"}}`, status });
         } } },
+        sleep: async () => {},
       }), (error) => error instanceof GeminiResumeError && error.kind === "unavailable");
     }
   } finally {
     console.error = originalError;
   }
-  assert.equal(records.length, cases.length);
-  for (let index = 0; index < cases.length; index += 1) {
-    assert.match(records[index], new RegExp(`"httpStatus":${cases[index][0]}`));
-    assert.match(records[index], new RegExp(`"code":"${cases[index][1]}"`));
-    assert.match(records[index], new RegExp(`"category":"${cases[index][2]}"`));
-    assert.doesNotMatch(records[index], /private error payload/);
+  for (const [status, , category] of cases) {
+    const matchingLogs = records.filter((log) => log.includes(`"httpStatus":${status}`));
+    assert.ok(matchingLogs.length >= 1);
+    assert.equal(matchingLogs.length, status === 429 || status === 503 ? 3 : 1);
+    for (const log of matchingLogs) {
+      assert.match(log, new RegExp(`"category":"${category}"`));
+      assert.match(log, /"event":"gemini_attempt"/);
+      assert.match(log, /"model":"gemini-3\.8-flash"/);
+      assert.match(log, /"attempt":[1-3]/);
+      assert.match(log, /"willRetry":(true|false)/);
+      assert.doesNotMatch(log, /"errorName"|"code"|"message"|"stage"/);
+      assert.doesNotMatch(log, /private error payload/);
+    }
   }
+});
+
+function apiFailure(status) {
+  const codes = {
+    400: "INVALID_ARGUMENT",
+    401: "UNAUTHENTICATED",
+    403: "PERMISSION_DENIED",
+    408: "REQUEST_TIMEOUT",
+    429: "RESOURCE_EXHAUSTED",
+    500: "INTERNAL",
+    502: "BAD_GATEWAY",
+    503: "UNAVAILABLE",
+    504: "GATEWAY_TIMEOUT",
+  };
+  return new ApiError({ message: `got status: ${codes[status] ?? "UNKNOWN"}.`, status });
+}
+
+function captureLogs(run) {
+  const records = [];
+  const originalError = console.error;
+  console.error = (...args) => records.push(args.join(" "));
+  return run(records).finally(() => { console.error = originalError; });
+}
+
+test("retries a transient 503 once and succeeds", async () => {
+  let calls = 0;
+  const delays = [];
+  await captureLogs(async (records) => {
+    const result = await optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+      model: "gemini-test",
+      client: { models: { generateContent: async () => {
+        calls += 1;
+        if (calls === 1) throw apiFailure(503);
+        return { text: JSON.stringify(candidate) };
+      } } },
+      random: () => 0.5,
+      sleep: async (ms) => { delays.push(ms); },
+    });
+    assert.equal(result.experiences.length, 1);
+    assert.equal(calls, 2);
+    assert.deepEqual(delays, [1125]);
+    assert.match(records[0], /"attempt":1/);
+    assert.match(records[0], /"httpStatus":503/);
+    assert.match(records[0], /"willRetry":true/);
+  });
+});
+
+test("retries two transient 503 errors with exponential delays then succeeds", async () => {
+  let calls = 0;
+  const delays = [];
+  await captureLogs(async () => {
+    await optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+      model: "gemini-test",
+      client: { models: { generateContent: async () => {
+        calls += 1;
+        if (calls < 3) throw apiFailure(503);
+        return { text: JSON.stringify(candidate) };
+      } } },
+      random: () => 0,
+      sleep: async (ms) => { delays.push(ms); },
+    });
+  });
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, [1000, 2000]);
+});
+
+test("three transient 503 errors exhaust the attempt limit", async () => {
+  let calls = 0;
+  const delays = [];
+  await captureLogs(async (records) => {
+    await assert.rejects(optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+      model: "gemini-test",
+      client: { models: { generateContent: async () => { calls += 1; throw apiFailure(503); } } },
+      random: () => 0,
+      sleep: async (ms) => { delays.push(ms); },
+    }), (error) => error instanceof GeminiResumeError && error.kind === "unavailable");
+    assert.equal(records.length, 3);
+    assert.match(records.at(-1), /"attempt":3/);
+    assert.match(records.at(-1), /"willRetry":false/);
+  });
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, [1000, 2000]);
+});
+
+test("retries each configured transient HTTP status", async () => {
+  for (const status of [408, 429, 500, 502, 503, 504]) {
+    let calls = 0;
+    await captureLogs(async () => {
+      await optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+        model: `gemini-retry-${status}`,
+        client: { models: { generateContent: async () => {
+          calls += 1;
+          if (calls === 1) throw apiFailure(status);
+          return { text: JSON.stringify(candidate) };
+        } } },
+        random: () => 0,
+        sleep: async () => {},
+      });
+    });
+    assert.equal(calls, 2, `HTTP ${status} should retry once`);
+  }
+});
+
+test("does not retry HTTP 400, 401 or 403", async () => {
+  for (const status of [400, 401, 403]) {
+    let calls = 0;
+    await captureLogs(async (records) => {
+      await assert.rejects(optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+        model: "gemini-test",
+        client: { models: { generateContent: async () => { calls += 1; throw apiFailure(status); } } },
+        sleep: async () => assert.fail("non-transient status must not sleep"),
+      }), (error) => error instanceof GeminiResumeError && error.kind === "unavailable");
+      assert.match(records[0], /"willRetry":false/);
+    });
+    assert.equal(calls, 1);
+  }
+});
+
+test("does not retry invalid structured output", async () => {
+  let calls = 0;
+  await captureLogs(async () => {
+    await assert.rejects(optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+      model: "gemini-test",
+      client: { models: { generateContent: async () => { calls += 1; return { text: "not-json" }; } } },
+      sleep: async () => assert.fail("invalid structured output must not sleep"),
+    }), (error) => error instanceof GeminiResumeError && error.kind === "invalid_response");
+  });
+  assert.equal(calls, 1);
+});
+
+test("does not wait for a retry that cannot fit in the remaining timeout budget", async () => {
+  let calls = 0;
+  let slept = false;
+  await captureLogs(async (records) => {
+    await assert.rejects(optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+      model: "gemini-test",
+      timeoutMs: 5,
+      client: { models: { generateContent: async () => { calls += 1; throw apiFailure(503); } } },
+      random: () => 0,
+      sleep: async () => { slept = true; },
+    }), (error) => error instanceof GeminiResumeError && error.kind === "unavailable");
+    assert.match(records[0], /"willRetry":false/);
+  });
+  assert.equal(calls, 1);
+  assert.equal(slept, false);
+});
+
+test("aborts an in-progress retry wait when the total timeout expires", async () => {
+  let calls = 0;
+  let sleepAborted = false;
+  await captureLogs(async () => {
+    await assert.rejects(optimizeWithGemini({ extractedText: source, area: "Full Stack", role: "Developer" }, {
+      model: "gemini-timeout-during-backoff",
+      timeoutMs: 1_100,
+      client: { models: { generateContent: async () => { calls += 1; throw apiFailure(503); } } },
+      random: () => 0,
+      sleep: (_ms, signal) => new Promise((_resolve, reject) => {
+        signal.addEventListener("abort", () => { sleepAborted = true; reject(new Error("aborted")); }, { once: true });
+      }),
+    }), (error) => error instanceof GeminiResumeError && error.kind === "timeout");
+  });
+  assert.equal(calls, 1);
+  assert.equal(sleepAborted, true);
 });

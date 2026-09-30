@@ -27,9 +27,15 @@ type GenerateOptions = {
   model?: string;
   timeoutMs?: number;
   client?: GeminiClient;
+  random?: () => number;
+  sleep?: (milliseconds: number, signal: AbortSignal) => Promise<void>;
 };
 
 const DEFAULT_TIMEOUT_MS = 8_000;
+const MAX_ATTEMPTS = 3;
+const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+const BASE_RETRY_DELAY_MS = 1_000;
+const RETRY_JITTER_MS = 250;
 
 export async function optimizeWithGemini(inputValue: unknown, options: GenerateOptions = {}): Promise<ResumeDraft> {
   const parsedInput = OptimizeResumeInputSchema.safeParse(inputValue);
@@ -55,6 +61,8 @@ export async function optimizeWithGemini(inputValue: unknown, options: GenerateO
   const redactedSource = redactResumeForOptimization(source);
   const abortController = new AbortController();
   const timeoutMs = Math.max(1, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const startedAt = Date.now();
+  let currentAttempt = 0;
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timeoutHandle = setTimeout(() => {
@@ -66,15 +74,25 @@ export async function optimizeWithGemini(inputValue: unknown, options: GenerateO
   let stage: GeminiFailureStage = "gemini_request";
   try {
     const response = await Promise.race([
-      client.models.generateContent({
+      generateWithRetry({
+        client,
         model,
-        contents: createResumeOptimizationContents({ ...parsedInput.data, extractedText: redactedSource }),
-        config: {
-          responseMimeType: "application/json",
-          responseJsonSchema: GEMINI_RESUME_RESPONSE_SCHEMA,
-          systemInstruction: RESUME_OPTIMIZATION_SYSTEM_INSTRUCTION,
-          abortSignal: abortController.signal,
+        request: {
+          model,
+          contents: createResumeOptimizationContents({ ...parsedInput.data, extractedText: redactedSource }),
+          config: {
+            responseMimeType: "application/json",
+            responseJsonSchema: GEMINI_RESUME_RESPONSE_SCHEMA,
+            systemInstruction: RESUME_OPTIMIZATION_SYSTEM_INSTRUCTION,
+            abortSignal: abortController.signal,
+          },
         },
+        signal: abortController.signal,
+        timeoutMs,
+        startedAt,
+        random: options.random ?? Math.random,
+        sleep: options.sleep ?? sleepWithAbort,
+        onAttempt: (attempt) => { currentAttempt = attempt; },
       }),
       timeout,
     ]);
@@ -101,7 +119,7 @@ export async function optimizeWithGemini(inputValue: unknown, options: GenerateO
   } catch (error) {
     if (error instanceof GeminiResumeError) {
       if (error.kind === "timeout") {
-        logGeminiFailure({ model, stage: "gemini_request", category: "timeout", message: "A chamada Gemini excedeu o limite de tempo." });
+        logGeminiAttempt({ attempt: currentAttempt || 1, status: null, category: "timeout", model, willRetry: false });
       }
       throw error;
     }
@@ -138,6 +156,89 @@ function logGeminiFailure(input: {
     message: input.message,
   };
   console.error("[resume-optimization]", JSON.stringify(event));
+}
+
+async function generateWithRetry(input: {
+  client: GeminiClient;
+  model: string;
+  request: Parameters<GeminiClient["models"]["generateContent"]>[0];
+  signal: AbortSignal;
+  timeoutMs: number;
+  startedAt: number;
+  random: () => number;
+  sleep: (milliseconds: number, signal: AbortSignal) => Promise<void>;
+  onAttempt: (attempt: number) => void;
+}) {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    if (input.signal.aborted) throw new GeminiResumeError("timeout");
+    input.onAttempt(attempt);
+    try {
+      return await input.client.models.generateContent(input.request);
+    } catch (error) {
+      if (input.signal.aborted) throw new GeminiResumeError("timeout");
+
+      const status = readHttpStatus(error);
+      const category = classifyGeminiError(error);
+      const transient = status !== null && RETRYABLE_HTTP_STATUSES.has(status) && attempt < MAX_ATTEMPTS;
+      const randomValue = transient ? Math.min(0.999_999, Math.max(0, input.random())) : 0;
+      const delayMs = transient ? BASE_RETRY_DELAY_MS * 2 ** (attempt - 1) + Math.floor(randomValue * RETRY_JITTER_MS) : 0;
+      const remainingMs = input.timeoutMs - (Date.now() - input.startedAt);
+      const willRetry = transient && delayMs < remainingMs;
+
+      logGeminiAttempt({
+        model: input.model,
+        status,
+        category,
+        attempt,
+        willRetry,
+      });
+
+      if (!willRetry) throw new GeminiResumeError("unavailable");
+      try {
+        await input.sleep(delayMs, input.signal);
+      } catch {
+        if (input.signal.aborted) throw new GeminiResumeError("timeout");
+        throw new GeminiResumeError("unavailable");
+      }
+    }
+  }
+  throw new GeminiResumeError("unavailable");
+}
+
+function logGeminiAttempt(input: {
+  attempt: number;
+  status: number | null;
+  category: string;
+  model: string;
+  willRetry: boolean;
+}) {
+  console.error("[resume-optimization]", JSON.stringify({
+    event: "gemini_attempt",
+    attempt: input.attempt,
+    httpStatus: input.status,
+    category: input.category,
+    model: input.model,
+    willRetry: input.willRetry,
+  }));
+}
+
+function sleepWithAbort(milliseconds: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new GeminiResumeError("timeout"));
+      return;
+    }
+    const timeoutHandle = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    const onAbort = () => {
+      clearTimeout(timeoutHandle);
+      signal.removeEventListener("abort", onAbort);
+      reject(new GeminiResumeError("timeout"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 function readHttpStatus(error: unknown): number | null {
